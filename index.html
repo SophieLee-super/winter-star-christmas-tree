@@ -1,370 +1,481 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>冬夜星尘圣诞树 · 3D 互动惊喜</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <style>
-    :root {
-      --bg-top: #040712;
-      --bg-mid: #0a1329;
-      --bg-bottom: #122140;
-      --gold: #f5d37e;
-      --cream: #fcf6e8;
-    }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="data:," />
+    <title>冬夜星尘圣诞树 · Merry Christmas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Noto+Serif+SC:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+      :root {
+        --ink: #050914;
+        --ink-2: #0a142e;
+        --gold: #e8c476;
+        --gold-soft: rgba(232, 196, 118, 0.55);
+        --cream: #fcf6e8;
+        --cranberry: #8f1d2c;
+        --paper: #fbf5e9;
+        --paper-ink: #2b2118;
+        --midnight: #16294f;
+        --serif-en: "Cormorant Garamond", "Times New Roman", serif;
+        --serif-cn: "Noto Serif SC", "Songti SC", "SimSun", serif;
+      }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: radial-gradient(circle at 50% 35%, var(--bg-bottom) 0%, var(--bg-mid) 48%, var(--bg-top) 100%);
-      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--cream);
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: none;
-    }
+      html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--ink);
+        color: var(--cream);
+        font-family: var(--serif-cn);
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
+      }
 
-    #webgl-container {
-      position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      cursor: grab;
-    }
+      #webgl-container {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        cursor: grab;
+        touch-action: none;
+      }
+      #webgl-container.dragging { cursor: grabbing; }
+      #webgl-container.hover-target { cursor: pointer; }
+      #webgl-container canvas { display: block; }
 
-    #webgl-container.dragging {
-      cursor: grabbing;
-    }
+      /* ---------- Atmosphere overlays ---------- */
+      .vignette {
+        position: fixed;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse 120% 90% at 50% 42%, rgba(0, 0, 0, 0) 52%, rgba(2, 5, 12, 0.36) 82%, rgba(1, 3, 8, 0.62) 100%),
+          linear-gradient(180deg, rgba(2, 4, 10, 0.22) 0%, rgba(0, 0, 0, 0) 18%, rgba(0, 0, 0, 0) 82%, rgba(1, 3, 8, 0.3) 100%);
+      }
 
-    #webgl-container.hover-target {
-      cursor: pointer;
-    }
+      .grain {
+        position: fixed;
+        inset: -70px;
+        z-index: 4;
+        pointer-events: none;
+        opacity: 0.05;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+        animation: grain-shift 0.9s steps(4) infinite;
+      }
+      @keyframes grain-shift {
+        0% { transform: translate(0, 0); }
+        25% { transform: translate(-22px, 14px); }
+        50% { transform: translate(14px, -20px); }
+        75% { transform: translate(-10px, -8px); }
+        100% { transform: translate(0, 0); }
+      }
 
-    /* Top Minimal Controls */
-    .top-bar {
-      position: fixed;
-      top: 16px;
-      right: 16px;
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+      .corner-branch {
+        position: fixed;
+        top: -6px;
+        z-index: 5;
+        width: min(240px, 36vw);
+        pointer-events: none;
+        opacity: 0.85;
+        filter: blur(2.6px);
+      }
+      .corner-branch.left { left: -14px; }
+      .corner-branch.right { right: -14px; transform: scaleX(-1); }
 
-    .pill-btn {
-      appearance: none;
-      border: 1px solid rgba(245, 211, 126, 0.28);
-      background: rgba(8, 15, 34, 0.58);
-      color: var(--cream);
-      padding: 8px 15px;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.4px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      backdrop-filter: blur(10px);
-      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-    }
+      /* ---------- Title ---------- */
+      .title-block {
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 22px);
+        left: 0;
+        right: 0;
+        z-index: 10;
+        text-align: center;
+        pointer-events: none;
+        animation: title-in 1.8s ease both;
+      }
+      @keyframes title-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .title-en {
+        font-family: var(--serif-en);
+        font-weight: 500;
+        font-size: clamp(31px, 6.4vw, 58px);
+        line-height: 1.05;
+        letter-spacing: 0.05em;
+        color: var(--cream);
+        text-shadow: 0 2px 26px rgba(0, 0, 0, 0.55), 0 0 44px rgba(232, 196, 118, 0.14);
+      }
+      .title-rule {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 11px;
+        margin: 7px auto 8px;
+      }
+      .rule-line {
+        width: clamp(38px, 8vw, 74px);
+        height: 1px;
+      }
+      .rule-line.l { background: linear-gradient(90deg, transparent, var(--gold-soft)); }
+      .rule-line.r { background: linear-gradient(90deg, var(--gold-soft), transparent); }
+      .rule-star { color: var(--gold); font-size: 11px; line-height: 1; }
+      .title-cn {
+        font-family: var(--serif-cn);
+        font-weight: 500;
+        font-size: clamp(14px, 3.4vw, 19px);
+        letter-spacing: 0.62em;
+        padding-left: 0.62em;
+        color: rgba(252, 246, 232, 0.92);
+        text-shadow: 0 1px 14px rgba(0, 0, 0, 0.5);
+      }
 
-    .pill-btn:hover {
-      transform: translateY(-1px);
-      background: rgba(16, 28, 60, 0.78);
-      border-color: rgba(245, 211, 126, 0.65);
-    }
+      /* ---------- Glass controls ---------- */
+      .music-btn {
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 14px);
+        right: 14px;
+        z-index: 20;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 15px;
+        border-radius: 999px;
+        border: 1px solid rgba(232, 196, 118, 0.34);
+        background: rgba(9, 17, 38, 0.44);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: var(--cream);
+        font-family: var(--serif-en);
+        font-size: 13.5px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        cursor: pointer;
+        transition: border-color 0.25s ease, background 0.25s ease, color 0.25s ease;
+      }
+      .music-btn svg { width: 15px; height: 15px; stroke: var(--gold); flex: none; }
+      .music-btn.active {
+        border-color: var(--gold);
+        background: rgba(232, 196, 118, 0.14);
+        color: #ffe9b0;
+      }
+      .music-btn:focus-visible, .modal-close:focus-visible, .action-btn:focus-visible {
+        outline: 2px solid var(--gold);
+        outline-offset: 2px;
+      }
 
-    .pill-btn.active {
-      border-color: var(--gold);
-      background: rgba(245, 211, 126, 0.16);
-      color: #ffe8ad;
-    }
+      .hint-pill {
+        position: fixed;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 15;
+        max-width: 92vw;
+        padding: 9px 18px;
+        border-radius: 999px;
+        background: rgba(9, 17, 38, 0.44);
+        border: 1px solid rgba(232, 196, 118, 0.28);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: rgba(252, 246, 232, 0.9);
+        font-size: 12.5px;
+        letter-spacing: 0.1em;
+        white-space: nowrap;
+        pointer-events: none;
+        transition: opacity 0.7s ease;
+      }
+      .hint-pill.hidden { opacity: 0; }
 
-    /* Bottom Subtle Hint */
-    .hint-pill {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 15;
-      padding: 8px 18px;
-      border-radius: 999px;
-      background: rgba(8, 15, 34, 0.56);
-      border: 1px solid rgba(245, 211, 126, 0.24);
-      color: rgba(252, 246, 232, 0.88);
-      font-size: 12.5px;
-      letter-spacing: 0.4px;
-      white-space: nowrap;
-      backdrop-filter: blur(10px);
-      pointer-events: none;
-      transition: opacity 0.6s ease;
-    }
+      @media (max-width: 560px) {
+        .title-block { top: calc(env(safe-area-inset-top, 0px) + 62px); }
+        .corner-branch { width: 34vw; }
+      }
 
-    .hint-pill.hidden {
-      opacity: 0;
-    }
+      /* ---------- Unified gift modal ---------- */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        background: rgba(3, 6, 16, 0.72);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+      .modal-backdrop.open {
+        display: flex;
+        animation: backdrop-in 0.3s ease both;
+      }
+      @keyframes backdrop-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
 
-    /* Gift Modal Overlay */
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(3, 6, 16, 0.74);
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-      z-index: 50;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
+      .modal-card {
+        position: relative;
+        width: min(94vw, 430px);
+        max-height: 86vh;
+        overflow-y: auto;
+        border-radius: 16px;
+        border-top: 3px solid var(--gold);
+        background: linear-gradient(180deg, #fdf8ec 0%, #f7eeda 100%);
+        color: var(--paper-ink);
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(232, 196, 118, 0.3);
+        padding: 26px 24px 24px;
+      }
+      .modal-backdrop.open .modal-card {
+        animation: card-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      @keyframes card-in {
+        from { transform: translateY(18px) scale(0.96); opacity: 0.4; }
+        to { transform: translateY(0) scale(1); opacity: 1; }
+      }
 
-    .modal-backdrop.open {
-      opacity: 1;
-      pointer-events: auto;
-    }
+      .modal-close {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(43, 33, 24, 0.08);
+        color: #4b3d30;
+        font-size: 19px;
+        line-height: 1;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition: background 0.2s ease;
+      }
+      .modal-close:hover { background: rgba(43, 33, 24, 0.16); }
 
-    .modal-card {
-      position: relative;
-      width: min(94vw, 430px);
-      max-height: 86vh;
-      overflow-y: auto;
-      border-radius: 22px;
-      background: linear-gradient(180deg, #fffaf0 0%, #f9efe0 100%);
-      color: #2b2118;
-      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(245, 211, 126, 0.35);
-      padding: 26px 24px 24px;
-      transform: translateY(20px) scale(0.95);
-      transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
-    }
+      .modal-tag {
+        display: inline-block;
+        font-family: var(--serif-cn);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        padding: 5px 12px 5px 14px;
+        border-radius: 999px;
+        margin-bottom: 11px;
+        background: rgba(232, 196, 118, 0.16);
+        color: #8a6a1f;
+        border: 1px solid rgba(178, 138, 58, 0.45);
+      }
 
-    .modal-backdrop.open .modal-card {
-      transform: translateY(0) scale(1);
-    }
+      .modal-title {
+        font-family: var(--serif-cn);
+        font-size: 21px;
+        font-weight: 700;
+        margin-bottom: 15px;
+        color: #231911;
+      }
 
-    .modal-close {
-      position: absolute;
-      top: 14px;
-      right: 14px;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: none;
-      background: rgba(43, 33, 24, 0.08);
-      color: #4b3d30;
-      font-size: 18px;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
-      transition: background 0.2s ease;
-    }
+      .letter-paper {
+        background: repeating-linear-gradient(
+          transparent,
+          transparent 27px,
+          rgba(188, 157, 118, 0.22) 28px
+        );
+        border: 1px solid #eadcc2;
+        border-radius: 10px;
+        padding: 15px 16px 13px;
+        line-height: 28px;
+        font-size: 14.5px;
+        color: #3d3025;
+        white-space: pre-line;
+      }
+      .letter-sign {
+        margin-top: 12px;
+        text-align: right;
+        font-size: 13px;
+        color: #7d6249;
+        font-weight: 600;
+      }
 
-    .modal-close:hover {
-      background: rgba(43, 33, 24, 0.16);
-    }
+      .voucher-ticket {
+        border: 2px dashed #a32733;
+        border-radius: 12px;
+        background: #fffaf0;
+        padding: 18px;
+        text-align: center;
+      }
+      .voucher-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--cranberry);
+        margin-bottom: 6px;
+      }
+      .voucher-desc {
+        font-size: 13.5px;
+        color: #5b4636;
+        line-height: 1.6;
+        margin-bottom: 14px;
+      }
+      .stamp-badge {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 6px 16px;
+        border: 2.5px solid #a32733;
+        border-radius: 8px;
+        color: #a32733;
+        font-weight: 800;
+        font-size: 14px;
+        letter-spacing: 1px;
+        transform: rotate(-6deg) scale(1.2);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+      .stamp-badge.stamped { opacity: 1; transform: rotate(-6deg) scale(1); }
 
-    .modal-tag {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.7px;
-      padding: 4px 11px;
-      border-radius: 999px;
-      margin-bottom: 10px;
-    }
+      .polaroid {
+        background: #ffffff;
+        border: 1px solid #e7dfd1;
+        border-radius: 8px;
+        padding: 12px 12px 16px;
+        box-shadow: 0 8px 22px rgba(44, 36, 29, 0.12);
+        text-align: center;
+      }
+      .polaroid-art {
+        width: 100%;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-bottom: 10px;
+        background: #0f1b38;
+      }
+      .polaroid-caption { font-size: 14px; color: #3d3025; font-weight: 600; }
+      .polaroid-sub { font-size: 12px; color: #8a7561; margin-top: 4px; }
 
-    .modal-title {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 14px;
-      color: #231911;
-    }
+      .fortune-box {
+        border-radius: 12px;
+        padding: 22px 16px;
+        background: linear-gradient(145deg, #1b2f57 0%, #0d1830 100%);
+        color: #fff6dc;
+        text-align: center;
+        border: 1px solid rgba(232, 196, 118, 0.45);
+      }
+      .fortune-head { font-size: 12px; letter-spacing: 0.2em; opacity: 0.75; }
+      .fortune-keyword {
+        font-family: var(--serif-cn);
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--gold);
+        margin: 9px 0;
+        letter-spacing: 4px;
+      }
+      .fortune-text { font-size: 14px; line-height: 1.65; color: #e9eefc; }
 
-    .letter-paper {
-      background: repeating-linear-gradient(
-        transparent,
-        transparent 27px,
-        rgba(188, 157, 118, 0.24) 28px
-      );
-      border: 1px solid #eadcc6;
-      border-radius: 12px;
-      padding: 16px 16px 14px;
-      line-height: 28px;
-      font-size: 14.5px;
-      color: #3d3025;
-      white-space: pre-line;
-    }
+      .action-btn {
+        margin-top: 14px;
+        width: 100%;
+        min-height: 46px;
+        padding: 11px 16px;
+        border: none;
+        border-radius: 10px;
+        background: var(--midnight);
+        color: var(--cream);
+        font-family: var(--serif-cn);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.15s ease;
+      }
+      .action-btn:hover { background: #1e3563; }
+      .action-btn:active { transform: scale(0.98); }
 
-    .letter-sign {
-      margin-top: 12px;
-      text-align: right;
-      font-size: 13px;
-      color: #7d6249;
-      font-weight: 600;
-    }
+      @media (prefers-reduced-motion: reduce) {
+        .grain { animation: none; }
+        .title-block { animation: none; }
+        .modal-backdrop.open, .modal-backdrop.open .modal-card { animation: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="webgl-container"></div>
 
-    .voucher-ticket {
-      border: 2px dashed #b9313b;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #fff7ee 0%, #ffe8d6 100%);
-      padding: 18px;
-      text-align: center;
-    }
+    <div class="vignette"></div>
+    <div class="grain"></div>
 
-    .voucher-name {
-      font-size: 18px;
-      font-weight: 700;
-      color: #9e222b;
-      margin-bottom: 6px;
-    }
+    <!-- Blurred pine branches framing the top corners -->
+    <svg class="corner-branch left" viewBox="0 0 220 150" aria-hidden="true">
+      <g stroke="#05130b" stroke-linecap="round" fill="none">
+        <path d="M-6 6 Q 92 24 208 96" stroke-width="5" />
+        <path d="M22 12 l-16 30 M28 13 l-5 34 M36 15 l7 32 M48 18 l-12 30 M56 20 l3 34 M68 24 l14 28 M82 28 l-8 32 M94 33 l16 26 M108 39 l-3 32 M124 47 l14 24 M140 55 l0 30 M156 64 l12 20" stroke-width="3.4" />
+        <path d="M60 4 Q 130 8 196 44" stroke-width="4" />
+        <path d="M84 8 l-10 24 M96 10 l2 26 M110 13 l12 22 M126 17 l-4 26 M140 21 l14 18" stroke-width="3" />
+        <path d="M8 44 Q 60 52 108 84" stroke-width="4" />
+        <path d="M30 48 l-8 24 M44 52 l4 24 M58 57 l12 18" stroke-width="3" />
+      </g>
+    </svg>
+    <svg class="corner-branch right" viewBox="0 0 220 150" aria-hidden="true">
+      <g stroke="#05130b" stroke-linecap="round" fill="none">
+        <path d="M-6 6 Q 92 24 208 96" stroke-width="5" />
+        <path d="M22 12 l-16 30 M28 13 l-5 34 M36 15 l7 32 M48 18 l-12 30 M56 20 l3 34 M68 24 l14 28 M82 28 l-8 32 M94 33 l16 26 M108 39 l-3 32 M124 47 l14 24 M140 55 l0 30 M156 64 l12 20" stroke-width="3.4" />
+        <path d="M60 4 Q 130 8 196 44" stroke-width="4" />
+        <path d="M84 8 l-10 24 M96 10 l2 26 M110 13 l12 22 M126 17 l-4 26 M140 21 l14 18" stroke-width="3" />
+        <path d="M8 44 Q 60 52 108 84" stroke-width="4" />
+        <path d="M30 48 l-8 24 M44 52 l4 24 M58 57 l12 18" stroke-width="3" />
+      </g>
+    </svg>
 
-    .voucher-desc {
-      font-size: 13.5px;
-      color: #5b4636;
-      line-height: 1.6;
-      margin-bottom: 14px;
-    }
+    <header class="title-block">
+      <h1 class="title-en">Merry Christmas</h1>
+      <div class="title-rule">
+        <span class="rule-line l"></span>
+        <span class="rule-star">✦</span>
+        <span class="rule-line r"></span>
+      </div>
+      <div class="title-cn">冬夜星尘</div>
+    </header>
 
-    .stamp-badge {
-      display: inline-block;
-      margin-top: 6px;
-      padding: 6px 16px;
-      border: 2.5px solid #b9313b;
-      border-radius: 8px;
-      color: #b9313b;
-      font-weight: 800;
-      font-size: 14px;
-      letter-spacing: 1px;
-      transform: rotate(-6deg) scale(1.2);
-      opacity: 0;
-      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-    }
+    <button class="music-btn" id="musicBtn" type="button" aria-pressed="false" aria-label="圣诞音乐开关">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 18.5V5.2L20 3v12.3" />
+        <circle cx="6.4" cy="18.5" r="2.7" />
+        <circle cx="17.4" cy="15.5" r="2.7" />
+      </svg>
+      <span id="musicLabel">MUSIC OFF</span>
+    </button>
 
-    .stamp-badge.stamped {
-      opacity: 1;
-      transform: rotate(-6deg) scale(1);
-    }
+    <div class="hint-pill" id="hintPill">圣诞老人正在派送礼物…</div>
 
-    .polaroid {
-      background: #ffffff;
-      border: 1px solid #e7dfd1;
-      border-radius: 10px;
-      padding: 12px 12px 16px;
-      box-shadow: 0 8px 22px rgba(44, 36, 29, 0.12);
-      text-align: center;
-    }
-
-    .polaroid-art {
-      width: 100%;
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 10px;
-      background: #0f1b38;
-    }
-
-    .polaroid-caption {
-      font-size: 14px;
-      color: #3d3025;
-      font-weight: 600;
-    }
-
-    .polaroid-sub {
-      font-size: 12px;
-      color: #8a7561;
-      margin-top: 4px;
-    }
-
-    .fortune-box {
-      border-radius: 14px;
-      padding: 22px 16px;
-      background: linear-gradient(145deg, #1b2f57 0%, #0e1a36 100%);
-      color: #fff6dc;
-      text-align: center;
-      border: 1px solid rgba(245, 211, 126, 0.4);
-    }
-
-    .fortune-keyword {
-      font-size: 25px;
-      font-weight: 800;
-      color: #f5d37e;
-      margin: 8px 0;
-      letter-spacing: 2px;
-    }
-
-    .fortune-text {
-      font-size: 14px;
-      line-height: 1.65;
-      color: #e9eefc;
-    }
-
-    .action-btn {
-      margin-top: 14px;
-      width: 100%;
-      padding: 10px 16px;
-      border: none;
-      border-radius: 10px;
-      background: #b9313b;
-      color: #fff;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s ease, transform 0.15s ease;
-    }
-
-    .action-btn:hover {
-      background: #9f252e;
-    }
-
-    .action-btn:active {
-      transform: scale(0.98);
-    }
-
-    .action-btn.secondary {
-      background: #285194;
-    }
-
-    .action-btn.secondary:hover {
-      background: #1f4179;
-    }
-  </style>
-</head>
-<body>
-  <div id="webgl-container"></div>
-
-  <div class="top-bar">
-    <button class="pill-btn" id="musicBtn" type="button">🔇 圣诞音乐：关</button>
-  </div>
-
-  <div class="hint-pill" id="hintPill">✨ 圣诞老人正在派送礼物…</div>
-
-  <!-- Gift Modal -->
-  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-card" id="modalCard">
-      <button class="modal-close" id="modalClose" type="button" aria-label="关闭弹窗">×</button>
-      <span class="modal-tag" id="modalTag">神秘礼物</span>
-      <h2 class="modal-title" id="modalTitle">礼物标题</h2>
-      <div id="modalBody"></div>
+    <!-- Gift Modal -->
+    <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-card" id="modalCard">
+        <button class="modal-close" id="modalClose" type="button" aria-label="关闭弹窗">×</button>
+        <span class="modal-tag" id="modalTag">神秘礼物</span>
+        <h2 class="modal-title" id="modalTitle">礼物标题</h2>
+        <div id="modalBody"></div>
+      </div>
     </div>
-  </div>
 
-  <script>
+    <script>
     (function () {
-      // ---------- 1. Web Audio API Music Box & Chimes ----------
+      'use strict';
+
+      // ---------- 1. Web Audio: music-box Jingle Bells & chimes ----------
       let audioCtx = null;
       let musicEnabled = false;
       let melodyTimer = null;
       const musicBtn = document.getElementById('musicBtn');
+      const musicLabel = document.getElementById('musicLabel');
 
       const jingleNotes = [
         [659.25, 0.25], [659.25, 0.25], [659.25, 0.5],
@@ -378,14 +489,16 @@
 
       function ensureAudio() {
         if (!audioCtx) {
-          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-          if (AudioContextClass) audioCtx = new AudioContextClass();
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioCtx = new AC();
         }
         if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
       }
 
-      function playTone(freq, duration, volume = 0.055, type = 'sine') {
+      function playTone(freq, duration, volume, type) {
         if (!musicEnabled || !audioCtx) return;
+        volume = volume || 0.05;
+        type = type || 'sine';
         const now = audioCtx.currentTime;
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
@@ -402,410 +515,301 @@
 
       function playChime() {
         if (!musicEnabled || !audioCtx) return;
-        playTone(1046.5, 0.18, 0.065, 'triangle');
-        setTimeout(() => playTone(1318.5, 0.28, 0.055, 'triangle'), 90);
+        playTone(1046.5, 0.18, 0.06, 'triangle');
+        setTimeout(function () { playTone(1318.5, 0.28, 0.05, 'triangle'); }, 90);
       }
 
       function stepMelody() {
         if (!musicEnabled) return;
-        const [freq, dur] = jingleNotes[noteIdx];
-        playTone(freq, dur * 0.9, 0.05, 'sine');
+        const note = jingleNotes[noteIdx];
+        playTone(note[0], note[1] * 0.9, 0.045, 'sine');
         noteIdx = (noteIdx + 1) % jingleNotes.length;
-        melodyTimer = setTimeout(stepMelody, dur * 1000);
+        melodyTimer = setTimeout(stepMelody, note[1] * 1000);
       }
 
-      musicBtn.addEventListener('click', () => {
+      musicBtn.addEventListener('click', function () {
         ensureAudio();
         musicEnabled = !musicEnabled;
+        musicBtn.classList.toggle('active', musicEnabled);
+        musicBtn.setAttribute('aria-pressed', musicEnabled ? 'true' : 'false');
+        musicLabel.textContent = musicEnabled ? 'MUSIC ON' : 'MUSIC OFF';
         if (musicEnabled) {
-          musicBtn.textContent = '🔊 圣诞音乐：开';
-          musicBtn.classList.add('active');
           noteIdx = 0;
           clearTimeout(melodyTimer);
           stepMelody();
         } else {
-          musicBtn.textContent = '🔇 圣诞音乐：关';
-          musicBtn.classList.remove('active');
           clearTimeout(melodyTimer);
         }
       });
 
-      // ---------- 2. Helper: Procedural Glow Sprite Texture ----------
-      function createGlowTexture(innerColor, outerColor) {
-        const size = 128;
+      // ---------- 2. Procedural textures ----------
+      function radialTexture(stops, size) {
+        size = size || 128;
         const c = document.createElement('canvas');
-        c.width = size;
-        c.height = size;
+        c.width = size; c.height = size;
         const g = c.getContext('2d');
         const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-        grad.addColorStop(0, innerColor);
-        grad.addColorStop(0.28, outerColor);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        stops.forEach(function (s) { grad.addColorStop(s[0], s[1]); });
         g.fillStyle = grad;
         g.fillRect(0, 0, size, size);
-        const tex = new THREE.CanvasTexture(c);
-        return tex;
+        return new THREE.CanvasTexture(c);
       }
 
-      const goldGlowTex = createGlowTexture('rgba(255, 250, 224, 1)', 'rgba(245, 200, 100, 0.45)');
-      const softSnowTex = createGlowTexture('rgba(255, 255, 255, 0.95)', 'rgba(210, 230, 255, 0.25)');
+      const glowTex = radialTexture([[0, 'rgba(255,250,224,1)'], [0.28, 'rgba(245,200,100,0.45)'], [1, 'rgba(0,0,0,0)']]);
+      const softDotTex = radialTexture([[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,255,255,0.55)'], [1, 'rgba(255,255,255,0)']]);
+      const poolTex = radialTexture([[0, 'rgba(255,205,110,0.85)'], [0.45, 'rgba(240,180,80,0.32)'], [1, 'rgba(0,0,0,0)']], 256);
+      const shadowTex = radialTexture([[0, 'rgba(2,4,10,0.62)'], [0.6, 'rgba(2,4,10,0.3)'], [1, 'rgba(0,0,0,0)']], 128);
 
-      // ---------- 3. Three.js Scene Setup ----------
+      function moonTexture() {
+        const s = 256;
+        const c = document.createElement('canvas');
+        c.width = s; c.height = s;
+        const g = c.getContext('2d');
+        const grad = g.createRadialGradient(s * 0.44, s * 0.42, 10, s / 2, s / 2, s / 2);
+        grad.addColorStop(0, '#f9f2df');
+        grad.addColorStop(0.75, '#f1e7cb');
+        grad.addColorStop(1, '#e2d5b4');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, s, s);
+        g.fillStyle = 'rgba(186,168,128,0.16)';
+        [[70, 80, 22], [170, 150, 30], [120, 190, 16], [185, 70, 13], [88, 140, 11]].forEach(function (b) {
+          g.beginPath(); g.arc(b[0], b[1], b[2], 0, Math.PI * 2); g.fill();
+        });
+        return new THREE.CanvasTexture(c);
+      }
+
+      // Tiny gradient cube env-map so metals & glass have something to reflect
+      function makeEnvTexture() {
+        const faces = [];
+        for (let i = 0; i < 6; i++) {
+          const c = document.createElement('canvas');
+          c.width = 64; c.height = 64;
+          const g = c.getContext('2d');
+          const grad = g.createLinearGradient(0, 0, 0, 64);
+          grad.addColorStop(0, '#12244a');
+          grad.addColorStop(0.55, '#2a4069');
+          grad.addColorStop(0.74, '#8a6f3e');
+          grad.addColorStop(1, '#0a0f1e');
+          g.fillStyle = grad;
+          g.fillRect(0, 0, 64, 64);
+          const rg = g.createRadialGradient(32, 42, 2, 32, 42, 28);
+          rg.addColorStop(0, 'rgba(255,216,144,0.95)');
+          rg.addColorStop(1, 'rgba(255,216,144,0)');
+          g.fillStyle = rg;
+          g.fillRect(0, 0, 64, 64);
+          faces.push(c);
+        }
+        const tex = new THREE.CubeTexture(faces);
+        tex.needsUpdate = true;
+        return tex;
+      }
+      const envTex = makeEnvTexture();
+
+      // ---------- 3. Scene, camera, renderer ----------
       const container = document.getElementById('webgl-container');
       const scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x081024, 0.022);
+      scene.background = new THREE.Color(0x050914);
+      scene.fog = new THREE.FogExp2(0x0a142e, 0.017);
 
-      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 160);
-      const baseCamRadius = window.innerWidth < 600 ? 15.5 : 13.0;
-      let targetAzimuth = 0;
-      let currentAzimuth = 0;
-      let targetPolar = 0.24;
-      let currentPolar = 0.24;
+      const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 220);
+      let baseCamRadius = 13;
+      function pickCamRadius() {
+        const a = window.innerWidth / window.innerHeight;
+        baseCamRadius = a < 0.8 ? 16.8 : (a < 1.05 ? 14.6 : 13.2);
+      }
+      pickCamRadius();
+
+      let targetAzimuth = 0, currentAzimuth = 0;
+      let targetPolar = 0.22, currentPolar = 0.22;
 
       function updateCameraTransform() {
         const x = Math.sin(currentAzimuth) * Math.cos(currentPolar) * baseCamRadius;
         const z = Math.cos(currentAzimuth) * Math.cos(currentPolar) * baseCamRadius;
-        const y = Math.sin(currentPolar) * baseCamRadius + 1.8;
+        const y = Math.sin(currentPolar) * baseCamRadius + 2.1;
         camera.position.set(x, y, z);
-        camera.lookAt(0, 2.3, 0);
+        camera.lookAt(0, 2.7, 0);
       }
       updateCameraTransform();
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.outputEncoding = THREE.sRGBEncoding;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.06;
       container.appendChild(renderer.domElement);
 
-      // Lighting
-      const ambientLight = new THREE.AmbientLight(0xb8ccf0, 0.75);
-      scene.add(ambientLight);
+      // ---------- 4. Cinematic lighting ----------
+      scene.add(new THREE.HemisphereLight(0x33497a, 0x0a140d, 0.55));
+      scene.add(new THREE.AmbientLight(0x8fa8d8, 0.22));
 
-      const treeWarmLight = new THREE.PointLight(0xffd275, 1.45, 20);
-      treeWarmLight.position.set(0, 3.2, 0.5);
+      // Cool moonlight rim from upper right, behind the tree
+      const moonLight = new THREE.DirectionalLight(0xa9c4ff, 0.95);
+      moonLight.position.set(11, 13, -9);
+      scene.add(moonLight);
+
+      // Warm light glowing from inside the tree
+      const treeWarmLight = new THREE.PointLight(0xffc46b, 1.25, 17, 2);
+      treeWarmLight.position.set(0, 3.4, 0.4);
       scene.add(treeWarmLight);
 
-      const rimLight = new THREE.DirectionalLight(0x88b4ff, 0.9);
-      rimLight.position.set(-6, 9, -5);
-      scene.add(rimLight);
+      const baseWarmLight = new THREE.PointLight(0xffb45e, 0.65, 9, 2);
+      baseWarmLight.position.set(0, 0.7, 0.6);
+      scene.add(baseWarmLight);
 
-      // ---------- 4. Snowy Ground & Distant Moon ----------
-      const groundGeo = new THREE.CircleGeometry(28, 64);
-      const groundMat = new THREE.MeshStandardMaterial({
-        color: 0x162544,
-        roughness: 0.92,
-        metalness: 0.08
-      });
-      const ground = new THREE.Mesh(groundGeo, groundMat);
+      // ---------- 5. Snow ground, golden pool, drifts ----------
+      const snowMatGround = new THREE.MeshStandardMaterial({ color: 0xb4c8e4, roughness: 0.96, metalness: 0.02 });
+      const ground = new THREE.Mesh(new THREE.CircleGeometry(34, 64), snowMatGround);
       ground.rotation.x = -Math.PI / 2;
-      ground.position.y = -0.35;
+      ground.position.y = 0;
       scene.add(ground);
 
-      // Ground golden reflection ring under tree
-      const glowRingMat = new THREE.SpriteMaterial({
-        map: goldGlowTex,
-        color: 0xffd578,
-        transparent: true,
-        opacity: 0.38,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
-      const glowRing = new THREE.Sprite(glowRingMat);
-      glowRing.scale.set(9.5, 4.2, 1);
-      glowRing.position.set(0, -0.1, 0);
-      scene.add(glowRing);
-
-      // Glowing Moon in sky
-      const moonSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: goldGlowTex,
-        color: 0xfff0c2,
-        transparent: true,
-        opacity: 0.9,
-        depthWrite: false
-      }));
-      moonSprite.position.set(8.5, 9.2, -16);
-      moonSprite.scale.set(4.5, 4.5, 1);
-      scene.add(moonSprite);
-
-      // Background Stars
-      const starCount = 420;
-      const starPos = new Float32Array(starCount * 3);
-      for (let i = 0; i < starCount; i++) {
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.random() * Math.PI * 0.46;
-        const r = 34 + Math.random() * 14;
-        starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-        starPos[i * 3 + 1] = r * Math.cos(phi) + 1;
-        starPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-      }
-      const starGeo = new THREE.BufferGeometry();
-      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-      const starMat = new THREE.PointsMaterial({
-        size: 0.28,
-        map: softSnowTex,
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.85,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
-      scene.add(new THREE.Points(starGeo, starMat));
-
-      // ---------- 5. 3D Particle Christmas Tree (Layered Real Pine Branches) ----------
-      const treeGroup = new THREE.Group();
-      scene.add(treeGroup);
-
-      const treeHeight = 6.3;
-      const maxRadius = 2.65;
-      let jewelMode = false;
-
-      const foliagePosList = [];
-      const foliageColList = [];
-      const accentPosList = [];
-      const accentColList = [];
-
-      const deepPine = new THREE.Color(0x0d4f32);
-      const midEmerald = new THREE.Color(0x1b7a4e);
-      const brightJade = new THREE.Color(0x2eb872);
-      const frostTip = new THREE.Color(0xa7f3d0);
-
-      const goldPalette = [
-        new THREE.Color(0xfff6d6),
-        new THREE.Color(0xffd86b),
-        new THREE.Color(0xf6be4f),
-        new THREE.Color(0xffe9a8)
-      ];
-      const jewelPalette = [
-        new THREE.Color(0xffd86b),
-        new THREE.Color(0xff6b7a),
-        new THREE.Color(0x6ee7b7),
-        new THREE.Color(0x7dd3fc),
-        new THREE.Color(0xf9a8d4)
-      ];
-
-      // Subtle particle trunk at the base
-      for (let i = 0; i < 260; i++) {
-        const y = Math.random() * 0.95 - 0.15;
-        const ang = Math.random() * Math.PI * 2;
-        const r = Math.random() * 0.24;
-        foliagePosList.push(Math.cos(ang) * r, y, Math.sin(ang) * r);
-        foliageColList.push(0.45, 0.27, 0.16);
-      }
-
-      // Build 8 distinct overlapping tiers of drooping radial branches
-      const tierCount = 8;
-      for (let tier = 0; tier < tierCount; tier++) {
-        const tierProgress = tier / (tierCount - 1); // 0 bottom -> 1 top
-        const tierBaseY = 0.65 + tierProgress * (treeHeight - 0.95);
-        const tierRadius = maxRadius * Math.pow(1 - tierProgress * 0.86, 0.92);
-        const branchCount = Math.max(5, Math.round(14 - tierProgress * 8));
-        const tierAngleOffset = tier * 0.47;
-
-        for (let b = 0; b < branchCount; b++) {
-          const baseAngle = tierAngleOffset + (b / branchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.18;
-          const branchLen = tierRadius * (0.86 + Math.random() * 0.22);
-          const steps = Math.max(14, Math.round(28 - tierProgress * 12));
-
-          for (let st = 0; st < steps; st++) {
-            const u = st / steps; // 0 inner trunk -> 1 outer tip
-            const r = u * branchLen;
-            // Real evergreen droop: arches slightly up then droops gracefully at the tip
-            const droop = -Math.pow(u, 1.75) * (0.48 * (1 - tierProgress * 0.55)) + Math.sin(u * Math.PI) * 0.08;
-            const yBase = tierBaseY + droop;
-
-            // Fan out pine needle clusters along each branch
-            const needlesPerStep = Math.max(2, Math.round(4 + u * 5));
-            for (let n = 0; n < needlesPerStep; n++) {
-              const fanSpread = (0.1 + u * 0.34) * (1 - tierProgress * 0.35);
-              const ang = baseAngle + (Math.random() - 0.5) * fanSpread;
-              const rJitter = r + (Math.random() - 0.5) * 0.16;
-              const yJitter = yBase + (Math.random() - 0.5) * (0.14 + u * 0.1);
-
-              foliagePosList.push(Math.cos(ang) * rJitter, yJitter, Math.sin(ang) * rJitter);
-
-              // Depth shading: darker inside, vibrant emerald mid, frost-kissed tips
-              const c = new THREE.Color();
-              if (u < 0.35) {
-                c.copy(deepPine).lerp(midEmerald, u / 0.35);
-              } else if (u < 0.82) {
-                c.copy(midEmerald).lerp(brightJade, (u - 0.35) / 0.47);
-              } else {
-                c.copy(brightJade).lerp(frostTip, (u - 0.82) / 0.18 * 0.75);
-              }
-              foliageColList.push(c.r, c.g, c.b);
-            }
-          }
-
-          // Subtle golden/frost sparkle at branch tips
-          if (b % 2 === 0) {
-            const tipY = tierBaseY - 0.45 * (1 - tierProgress * 0.55);
-            accentPosList.push(Math.cos(baseAngle) * branchLen, tipY, Math.sin(baseAngle) * branchLen);
-            const gc = goldPalette[(tier + b) % goldPalette.length];
-            accentColList.push(gc.r, gc.g, gc.b);
-          }
-        }
-      }
-
-      // Draped golden stardust garlands winding around the layered branches
-      const ribbonCount = 900;
-      for (let i = 0; i < ribbonCount; i++) {
-        const t = i / ribbonCount;
-        const y = 0.55 + t * (treeHeight - 0.75);
-        const turns = 6.5;
-        const angle = t * Math.PI * 2 * turns;
-        const tierR = maxRadius * Math.pow(1 - t * 0.86, 0.92);
-        const r = tierR * (0.98 + Math.sin(t * Math.PI * 16) * 0.06);
-        accentPosList.push(
-          Math.cos(angle) * r + (Math.random() - 0.5) * 0.08,
-          y + (Math.random() - 0.5) * 0.08,
-          Math.sin(angle) * r + (Math.random() - 0.5) * 0.08
-        );
-        const gc = goldPalette[i % goldPalette.length];
-        accentColList.push(gc.r, gc.g, gc.b);
-      }
-
-      const treeGeo = new THREE.BufferGeometry();
-      treeGeo.setAttribute('position', new THREE.Float32BufferAttribute(foliagePosList, 3));
-      treeGeo.setAttribute('color', new THREE.Float32BufferAttribute(foliageColList, 3));
-      const treeMat = new THREE.PointsMaterial({
-        size: 0.18,
-        map: softSnowTex,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.88,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
-      treeGroup.add(new THREE.Points(treeGeo, treeMat));
-
-      const accentGeo = new THREE.BufferGeometry();
-      accentGeo.setAttribute('position', new THREE.Float32BufferAttribute(accentPosList, 3));
-      accentGeo.setAttribute('color', new THREE.Float32BufferAttribute(accentColList, 3));
-      const accentMat = new THREE.PointsMaterial({
-        size: 0.24,
-        map: goldGlowTex,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.95,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
-      treeGroup.add(new THREE.Points(accentGeo, accentMat));
-
-      // Larger Bokeh Ornaments nestled in the branches
-      const orbCount = 135;
-      const orbPos = new Float32Array(orbCount * 3);
-      const orbColors = new Float32Array(orbCount * 3);
-      for (let i = 0; i < orbCount; i++) {
-        const t = (i / orbCount) * 0.88 + 0.05;
-        const y = 0.65 + t * (treeHeight - 0.95);
-        const r = maxRadius * Math.pow(1 - t * 0.86, 0.92) * (0.76 + Math.random() * 0.24);
-        const angle = t * Math.PI * 2 * 6.5 + (i % 5) * 1.25;
-        orbPos[i * 3] = Math.cos(angle) * r;
-        orbPos[i * 3 + 1] = y - 0.12;
-        orbPos[i * 3 + 2] = Math.sin(angle) * r;
-        const col = goldPalette[i % goldPalette.length];
-        orbColors[i * 3] = col.r;
-        orbColors[i * 3 + 1] = col.g;
-        orbColors[i * 3 + 2] = col.b;
-      }
-      const orbGeo = new THREE.BufferGeometry();
-      orbGeo.setAttribute('position', new THREE.BufferAttribute(orbPos, 3));
-      orbGeo.setAttribute('color', new THREE.BufferAttribute(orbColors, 3));
-      const orbMat = new THREE.PointsMaterial({
-        size: 0.48,
-        map: goldGlowTex,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.88,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
-      const orbPoints = new THREE.Points(orbGeo, orbMat);
-      treeGroup.add(orbPoints);
-
-      // 3D Top Star (Interactive)
-      const starGroup = new THREE.Group();
-      starGroup.position.set(0, treeHeight + 0.3, 0);
-      const starShape = new THREE.Shape();
-      const outerR = 0.42, innerR = 0.18;
-      for (let i = 0; i < 10; i++) {
-        const r = i % 2 === 0 ? outerR : innerR;
-        const a = (i / 10) * Math.PI * 2 + Math.PI / 2;
-        const sx = Math.cos(a) * r;
-        const sy = Math.sin(a) * r;
-        if (i === 0) starShape.moveTo(sx, sy);
-        else starShape.lineTo(sx, sy);
-      }
-      starShape.closePath();
-      const topStarGeo = new THREE.ExtrudeGeometry(starShape, {
-        depth: 0.08,
-        bevelEnabled: true,
-        bevelThickness: 0.03,
-        bevelSize: 0.03,
-        bevelSegments: 2
-      });
-      topStarGeo.center();
-      const starMesh = new THREE.Mesh(
-        topStarGeo,
-        new THREE.MeshBasicMaterial({ color: 0xffe999 })
+      const pool = new THREE.Mesh(
+        new THREE.CircleGeometry(4.1, 40),
+        new THREE.MeshBasicMaterial({ map: poolTex, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })
       );
-      starGroup.add(starMesh);
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.y = 0.02;
+      scene.add(pool);
 
-      const starHalo = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: goldGlowTex,
-        color: 0xffdf78,
-        transparent: true,
-        opacity: 0.95,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      }));
-      starHalo.scale.set(2.3, 2.3, 1);
-      starGroup.add(starHalo);
-      treeGroup.add(starGroup);
-
-      function recolorTree() {
-        const palette = jewelMode ? jewelPalette : goldPalette;
-        const aCol = accentGeo.attributes.color;
-        for (let i = 0; i < aCol.count; i++) {
-          const c = palette[i % palette.length];
-          aCol.setXYZ(i, c.r, c.g, c.b);
-        }
-        aCol.needsUpdate = true;
-
-        const oCol = orbGeo.attributes.color;
-        for (let i = 0; i < orbCount; i++) {
-          const c = palette[i % palette.length];
-          oCol.setXYZ(i, c.r, c.g, c.b);
-        }
-        oCol.needsUpdate = true;
-      }
-
-      // ---------- 6. Falling Snow + Burst Sparkle Particles ----------
-      const snowCount = 320;
-      const snowPos = new Float32Array(snowCount * 3);
-      const snowSpeeds = new Float32Array(snowCount);
-      for (let i = 0; i < snowCount; i++) {
-        snowPos[i * 3] = (Math.random() - 0.5) * 28;
-        snowPos[i * 3 + 1] = Math.random() * 14;
-        snowPos[i * 3 + 2] = (Math.random() - 0.5) * 24;
-        snowSpeeds[i] = 0.015 + Math.random() * 0.025;
-      }
-      const snowGeo = new THREE.BufferGeometry();
-      snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
-      const snowMat = new THREE.PointsMaterial({
-        size: 0.2,
-        map: softSnowTex,
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.72,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
+      // Gentle snow drifts
+      const driftMat = new THREE.MeshStandardMaterial({ color: 0xa9bedd, roughness: 1 });
+      [[6.5, 0.6, -3.5, 2.3], [-7.5, 0.5, -2, 1.9], [4.2, 0.4, 4.8, 1.5], [-4.8, 0.45, 4.2, 1.7], [9, 0.7, 2.5, 2.6], [-10, 0.6, 1, 2.2], [1.5, 0.3, -6.5, 1.6]].forEach(function (d) {
+        const m = new THREE.Mesh(new THREE.SphereGeometry(d[3], 20, 14), driftMat);
+        m.scale.y = 0.22;
+        m.position.set(d[0], 0, d[2]);
+        scene.add(m);
       });
-      const snowPoints = new THREE.Points(snowGeo, snowMat);
-      scene.add(snowPoints);
 
-      // Dynamic burst/trail particles
-      const maxBursts = 260;
+      // Glittering sparkles embedded in the snow
+      const sparkCount = 650;
+      const sparkPos = new Float32Array(sparkCount * 3);
+      for (let i = 0; i < sparkCount; i++) {
+        const r = Math.sqrt(Math.random()) * 15;
+        const a = Math.random() * Math.PI * 2;
+        sparkPos[i * 3] = Math.cos(a) * r;
+        sparkPos[i * 3 + 1] = 0.03 + Math.random() * 0.05;
+        sparkPos[i * 3 + 2] = Math.sin(a) * r;
+      }
+      const sparkGeo = new THREE.BufferGeometry();
+      sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+      const sparkMat = new THREE.PointsMaterial({
+        size: 0.075, map: softDotTex, color: 0xdceaff, transparent: true, opacity: 0.5,
+        depthWrite: false, blending: THREE.AdditiveBlending
+      });
+      scene.add(new THREE.Points(sparkGeo, sparkMat));
+
+      // ---------- 6. Moon: solid pale disc + layered halo (upper right) ----------
+      const moonGroup = new THREE.Group();
+      moonGroup.position.set(10.5, 11, -19);
+      const moonDisc = new THREE.Mesh(
+        new THREE.CircleGeometry(1.7, 48),
+        new THREE.MeshBasicMaterial({ map: moonTexture(), fog: false })
+      );
+      moonGroup.add(moonDisc);
+      const moonGlowNear = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xf5e3b0, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+      moonGlowNear.scale.set(6.4, 6.4, 1);
+      moonGroup.add(moonGlowNear);
+      const moonGlowFar = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xcfd9f2, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+      moonGlowFar.scale.set(13, 13, 1);
+      moonGroup.add(moonGlowFar);
+      scene.add(moonGroup);
+
+      // ---------- 7. Far stars ----------
+      function makeStars(count, size, opacity) {
+        const pos = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.random() * Math.PI * 0.44;
+          const r = 46 + Math.random() * 16;
+          pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+          pos[i * 3 + 1] = r * Math.cos(phi) + 1.5;
+          pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const mat = new THREE.PointsMaterial({
+          size: size, sizeAttenuation: false, map: softDotTex, color: 0xf4f7ff,
+          transparent: true, opacity: opacity, depthWrite: false, blending: THREE.AdditiveBlending, fog: false
+        });
+        const pts = new THREE.Points(geo, mat);
+        scene.add(pts);
+        return mat;
+      }
+      const starMatA = makeStars(430, 1.7, 0.85);
+      const starMatB = makeStars(90, 3.0, 0.9);
+
+      // ---------- 8. Distant pine silhouettes on the horizon ----------
+      const silhouetteMat = new THREE.MeshBasicMaterial({ color: 0x081226 });
+      const silhouetteMatNear = new THREE.MeshBasicMaterial({ color: 0x050b18 });
+      function makePine(h, mat) {
+        const g = new THREE.Group();
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, h * 0.22, 6), mat);
+        trunk.position.y = h * 0.11;
+        g.add(trunk);
+        const tiers = [[0.46, 0.52], [0.35, 0.4], [0.23, 0.3]];
+        tiers.forEach(function (t, i) {
+          const cone = new THREE.Mesh(new THREE.ConeGeometry(h * t[0] * 0.5, h * t[1], 8), mat);
+          cone.position.y = h * (0.2 + i * 0.24) + h * t[1] / 2;
+          g.add(cone);
+        });
+        return g;
+      }
+      for (let i = 0; i < 17; i++) {
+        const a = (i / 17) * Math.PI * 2 + Math.random() * 0.3;
+        const r = 17 + Math.random() * 7;
+        const h = 4.5 + Math.random() * 3.6;
+        const p = makePine(h, silhouetteMat);
+        p.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+        p.rotation.y = Math.random() * Math.PI;
+        scene.add(p);
+      }
+      // A few nearer, darker pines for parallax depth
+      [[-11.5, -6.5, 6.8], [12, -5, 7.6], [-12.5, 3.5, 5.6], [13, 4.5, 6.2]].forEach(function (d) {
+        const p = makePine(d[2], silhouetteMatNear);
+        p.position.set(d[0], 0, d[1]);
+        scene.add(p);
+      });
+
+      // ---------- 9. Snowfall: mid layer + large blurred near flakes ----------
+      function makeSnowLayer(count, size, opacity, area, height) {
+        const pos = new Float32Array(count * 3);
+        const speeds = new Float32Array(count);
+        for (let i = 0; i < count; i++) {
+          pos[i * 3] = (Math.random() - 0.5) * area;
+          pos[i * 3 + 1] = Math.random() * height;
+          pos[i * 3 + 2] = (Math.random() - 0.5) * area;
+          speeds[i] = 0.012 + Math.random() * 0.022;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const mat = new THREE.PointsMaterial({
+          size: size, map: softDotTex, color: 0xffffff, transparent: true, opacity: opacity,
+          depthWrite: false, blending: THREE.AdditiveBlending
+        });
+        const pts = new THREE.Points(geo, mat);
+        scene.add(pts);
+        return { geo: geo, speeds: speeds, count: count, area: area, height: height };
+      }
+      const snowMid = makeSnowLayer(430, 0.15, 0.7, 30, 15);
+      const snowNear = makeSnowLayer(55, 0.55, 0.3, 17, 12);
+
+      function updateSnow(layer, elapsed, sway) {
+        const arr = layer.geo.attributes.position.array;
+        for (let i = 0; i < layer.count; i++) {
+          arr[i * 3 + 1] -= layer.speeds[i];
+          arr[i * 3] += Math.sin(elapsed * 0.7 + i * 1.7) * sway;
+          if (arr[i * 3 + 1] < -0.3) {
+            arr[i * 3 + 1] = layer.height;
+            arr[i * 3] = (Math.random() - 0.5) * layer.area;
+            arr[i * 3 + 2] = (Math.random() - 0.5) * layer.area;
+          }
+        }
+        layer.geo.attributes.position.needsUpdate = true;
+      }
+
+      // ---------- 10. Burst sparkles (star tap, gift landings, Santa trail) ----------
+      const maxBursts = 300;
       const burstData = [];
       const burstPos = new Float32Array(maxBursts * 3);
       for (let i = 0; i < maxBursts; i++) {
@@ -815,18 +819,13 @@
       const burstGeo = new THREE.BufferGeometry();
       burstGeo.setAttribute('position', new THREE.BufferAttribute(burstPos, 3));
       const burstMat = new THREE.PointsMaterial({
-        size: 0.34,
-        map: goldGlowTex,
-        color: 0xffe484,
-        transparent: true,
-        opacity: 0.9,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
+        size: 0.3, map: glowTex, color: 0xffe484, transparent: true, opacity: 0.92,
+        depthWrite: false, blending: THREE.AdditiveBlending
       });
-      const burstPoints = new THREE.Points(burstGeo, burstMat);
-      scene.add(burstPoints);
+      scene.add(new THREE.Points(burstGeo, burstMat));
 
-      function spawnBurst(x, y, z, count, spread = 0.08) {
+      function spawnBurst(x, y, z, count, spread) {
+        spread = spread || 0.08;
         let spawned = 0;
         for (let i = 0; i < maxBursts && spawned < count; i++) {
           if (!burstData[i].active) {
@@ -843,240 +842,472 @@
         }
       }
 
-      // ---------- 7. 3D Santa & Reindeer Sleigh (Particle-Lit Silhouette) ----------
+      function updateBursts() {
+        const arr = burstGeo.attributes.position.array;
+        for (let i = 0; i < maxBursts; i++) {
+          if (burstData[i].active) {
+            arr[i * 3] += burstData[i].vx;
+            arr[i * 3 + 1] += burstData[i].vy;
+            arr[i * 3 + 2] += burstData[i].vz;
+            burstData[i].vy -= 0.0018;
+            burstData[i].life -= 0.02;
+            if (burstData[i].life <= 0) {
+              burstData[i].active = false;
+              arr[i * 3 + 1] = -999;
+            }
+          }
+        }
+        burstGeo.attributes.position.needsUpdate = true;
+      }
+
+      // ---------- 11. The tree: opaque pine core + needle particles ----------
+      const treeGroup = new THREE.Group();
+      scene.add(treeGroup);
+
+      const treeHeight = 6.4;
+      const maxRadius = 2.65;
+      function radiusAt(t) { return maxRadius * Math.pow(1 - t * 0.86, 0.92); }
+
+      // Trunk + gold collar
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.19, 0.26, 1.15, 8),
+        new THREE.MeshStandardMaterial({ color: 0x38220f, roughness: 0.95 })
+      );
+      trunk.position.y = 0.55;
+      treeGroup.add(trunk);
+      const collar = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.52, 0.72, 0.34, 20),
+        new THREE.MeshStandardMaterial({ color: 0xc9a24f, metalness: 0.85, roughness: 0.35, envMap: envTex, envMapIntensity: 0.9 })
+      );
+      collar.position.y = 0.17;
+      treeGroup.add(collar);
+
+      // Opaque silhouette core: stacked flat-shaded cones, darker at the base
+      const coreLow = new THREE.Color(0x09301f);
+      const coreHigh = new THREE.Color(0x0e4a2e);
+      const coneCount = 7;
+      for (let i = 0; i < coneCount; i++) {
+        const t = i / (coneCount - 1);
+        const coneR = 2.78 * (1 - t * 0.8);
+        const coneH = 1.95;
+        const cone = new THREE.Mesh(
+          new THREE.ConeGeometry(coneR, coneH, 10),
+          new THREE.MeshStandardMaterial({ color: coreLow.clone().lerp(coreHigh, t), roughness: 0.92, metalness: 0.02, flatShading: true })
+        );
+        cone.position.y = 0.55 + t * 4.35 + coneH / 2;
+        cone.rotation.y = Math.random() * Math.PI;
+        treeGroup.add(cone);
+      }
+
+      // Needle particles (NORMAL blending): dark inside, emerald mid, frost only at tips
+      const foliagePos = [];
+      const foliageCol = [];
+      const deepPine = new THREE.Color(0x0b3d27);
+      const midEmerald = new THREE.Color(0x17704a);
+      const brightJade = new THREE.Color(0x35a86b);
+      const frostTip = new THREE.Color(0xe9f7ef);
+
+      for (let i = 0; i < 200; i++) {
+        const y = Math.random() * 0.9 + 0.1;
+        const ang = Math.random() * Math.PI * 2;
+        const r = Math.random() * 0.22;
+        foliagePos.push(Math.cos(ang) * r, y, Math.sin(ang) * r);
+        foliageCol.push(0.32, 0.19, 0.1);
+      }
+
+      const tierCount = 8;
+      for (let tier = 0; tier < tierCount; tier++) {
+        const tp = tier / (tierCount - 1);
+        const tierBaseY = 0.6 + tp * (treeHeight - 0.95);
+        const tierRadius = radiusAt(tp);
+        const branchCount = Math.max(5, Math.round(14 - tp * 8));
+        const tierAngleOffset = tier * 0.47;
+        for (let b = 0; b < branchCount; b++) {
+          const baseAngle = tierAngleOffset + (b / branchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.18;
+          const branchLen = tierRadius * (0.88 + Math.random() * 0.2);
+          const steps = Math.max(13, Math.round(26 - tp * 11));
+          for (let st = 0; st < steps; st++) {
+            const u = st / steps;
+            const r = u * branchLen;
+            const droop = -Math.pow(u, 1.75) * (0.46 * (1 - tp * 0.55)) + Math.sin(u * Math.PI) * 0.08;
+            const yBase = tierBaseY + droop;
+            const needlesPerStep = Math.max(2, Math.round(4 + u * 5));
+            for (let n = 0; n < needlesPerStep; n++) {
+              const fanSpread = (0.1 + u * 0.34) * (1 - tp * 0.35);
+              const ang = baseAngle + (Math.random() - 0.5) * fanSpread;
+              const rJ = r + (Math.random() - 0.5) * 0.16;
+              const yJ = yBase + (Math.random() - 0.5) * (0.14 + u * 0.1);
+              foliagePos.push(Math.cos(ang) * rJ, yJ, Math.sin(ang) * rJ);
+              const c = new THREE.Color();
+              if (u < 0.35) c.copy(deepPine).lerp(midEmerald, u / 0.35);
+              else if (u < 0.85) c.copy(midEmerald).lerp(brightJade, (u - 0.35) / 0.5);
+              else c.copy(brightJade).lerp(frostTip, (u - 0.85) / 0.15 * 0.55);
+              foliageCol.push(c.r, c.g, c.b);
+            }
+          }
+        }
+      }
+      const treeGeo = new THREE.BufferGeometry();
+      treeGeo.setAttribute('position', new THREE.Float32BufferAttribute(foliagePos, 3));
+      treeGeo.setAttribute('color', new THREE.Float32BufferAttribute(foliageCol, 3));
+      const treeMat = new THREE.PointsMaterial({
+        size: 0.17, map: softDotTex, vertexColors: true, transparent: true, opacity: 0.96,
+        depthWrite: true, blending: THREE.NormalBlending
+      });
+      treeGroup.add(new THREE.Points(treeGeo, treeMat));
+
+      // ---------- 12. Garland: warm string lights that twinkle (3 phases) ----------
+      let jewelMode = false;
+      const GOLD_LIGHT = 0xffd98a;
+      const jewelColors = [0xffa7ba, 0x9fe8c9, 0xa9d3ff];
+      const lightGroups = [];
+      (function buildLights() {
+        const perGroup = [[], [], []];
+        const total = 156;
+        for (let i = 0; i < total; i++) {
+          const t = i / total;
+          const y = 0.85 + t * (treeHeight - 1.15);
+          const angle = t * Math.PI * 2 * 5.5;
+          const r = radiusAt(t) * 1.03;
+          perGroup[i % 3].push(Math.cos(angle) * r, y, Math.sin(angle) * r);
+        }
+        perGroup.forEach(function (arr) {
+          const geo = new THREE.BufferGeometry();
+          geo.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+          const mat = new THREE.PointsMaterial({
+            size: 0.15, map: glowTex, color: GOLD_LIGHT, transparent: true, opacity: 0.9,
+            depthWrite: false, blending: THREE.AdditiveBlending
+          });
+          const pts = new THREE.Points(geo, mat);
+          treeGroup.add(pts);
+          lightGroups.push(mat);
+        });
+      })();
+
+      // ---------- 13. Real 3D ornaments: 3 sizes, 6 materials, placed unevenly ----------
+      const ornamentMats = {
+        gold:      { mat: new THREE.MeshStandardMaterial({ color: 0xd8ab52, metalness: 0.92, roughness: 0.26, envMap: envTex, envMapIntensity: 1.1 }), w: 0.4 },
+        paleGold:  { mat: new THREE.MeshStandardMaterial({ color: 0xe9d194, metalness: 0.8, roughness: 0.36, envMap: envTex, envMapIntensity: 0.9 }), w: 0.2 },
+        pinkGlass: { mat: new THREE.MeshStandardMaterial({ color: 0xe3a3b4, metalness: 0.1, roughness: 0.14, transparent: true, opacity: 0.88, envMap: envTex, envMapIntensity: 1.2 }), w: 0.12 },
+        iceGlass:  { mat: new THREE.MeshStandardMaterial({ color: 0xa9cdea, metalness: 0.1, roughness: 0.14, transparent: true, opacity: 0.85, envMap: envTex, envMapIntensity: 1.2 }), w: 0.1 },
+        cranberry: { mat: new THREE.MeshStandardMaterial({ color: 0x8f1d2c, metalness: 0.05, roughness: 0.6 }), w: 0.1 },
+        frost:     { mat: new THREE.MeshStandardMaterial({ color: 0xf2efe4, metalness: 0.05, roughness: 0.45 }), w: 0.08 }
+      };
+      const ornamentKeys = Object.keys(ornamentMats);
+      function pickOrnamentMat() {
+        let roll = Math.random();
+        for (let i = 0; i < ornamentKeys.length; i++) {
+          roll -= ornamentMats[ornamentKeys[i]].w;
+          if (roll <= 0) return ornamentMats[ornamentKeys[i]].mat;
+        }
+        return ornamentMats.gold.mat;
+      }
+      const ornamentSizes = [0.09, 0.13, 0.18];
+      const ornamentGroup = new THREE.Group();
+      treeGroup.add(ornamentGroup);
+      for (let i = 0; i < 46; i++) {
+        const t = 0.05 + Math.random() * 0.87;
+        const angle = Math.random() * Math.PI * 2;
+        const r = radiusAt(t) * (0.93 + Math.random() * 0.09);
+        const size = ornamentSizes[Math.floor(Math.random() * 3)] * (0.85 + Math.random() * 0.3);
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(size, 20, 16), pickOrnamentMat());
+        orb.position.set(Math.cos(angle) * r, 0.6 + t * (treeHeight - 0.95) - 0.14, Math.sin(angle) * r);
+        ornamentGroup.add(orb);
+        const cap = new THREE.Mesh(
+          new THREE.CylinderGeometry(size * 0.32, size * 0.32, size * 0.35, 8),
+          ornamentMats.gold.mat
+        );
+        cap.position.copy(orb.position);
+        cap.position.y += size * 1.05;
+        ornamentGroup.add(cap);
+      }
+
+      // ---------- 14. Top star (tap target + easter egg) ----------
+      const starGroup = new THREE.Group();
+      starGroup.position.set(0, treeHeight + 0.42, 0);
+      const starShape = new THREE.Shape();
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? 0.42 : 0.18;
+        const a = (i / 10) * Math.PI * 2 + Math.PI / 2;
+        const sx = Math.cos(a) * r, sy = Math.sin(a) * r;
+        if (i === 0) starShape.moveTo(sx, sy); else starShape.lineTo(sx, sy);
+      }
+      starShape.closePath();
+      const starGeo = new THREE.ExtrudeGeometry(starShape, { depth: 0.08, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 2 });
+      starGeo.center();
+      const starMat3d = new THREE.MeshStandardMaterial({
+        color: 0xe8c476, metalness: 0.9, roughness: 0.3, envMap: envTex, envMapIntensity: 1.1,
+        emissive: 0x664d12, emissiveIntensity: 0.35
+      });
+      const starMesh = new THREE.Mesh(starGeo, starMat3d);
+      starGroup.add(starMesh);
+      const starHalo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffdf78, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+      starHalo.scale.set(2.3, 2.3, 1);
+      starGroup.add(starHalo);
+      // Generous invisible tap target for small phone screens
+      const starHit = new THREE.Mesh(
+        new THREE.SphereGeometry(0.78, 10, 8),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+      );
+      starGroup.add(starHit);
+      treeGroup.add(starGroup);
+
+      function applyLightPalette() {
+        lightGroups.forEach(function (mat, i) {
+          mat.color.setHex(jewelMode ? jewelColors[i] : GOLD_LIGHT);
+        });
+        starMat3d.emissive.setHex(jewelMode ? 0x5c2a44 : 0x664d12);
+      }
+
+      // ---------- 15. Santa: distant dark silhouette crossing the moon ----------
       const santaGroup = new THREE.Group();
+      const silMat = new THREE.MeshBasicMaterial({ color: 0x04060c, fog: false });
+      function sil(geo, x, y, z) {
+        const m = new THREE.Mesh(geo, silMat);
+        m.position.set(x || 0, y || 0, z || 0);
+        return m;
+      }
+      // Sleigh
+      santaGroup.add(sil(new THREE.BoxGeometry(1.25, 0.34, 0.55), 0, 0, 0));
+      const sleighCurl = sil(new THREE.TorusGeometry(0.17, 0.045, 8, 14, Math.PI), 0.66, 0.2, 0);
+      sleighCurl.rotation.z = -0.5;
+      santaGroup.add(sleighCurl);
+      santaGroup.add(sil(new THREE.BoxGeometry(0.34, 0.3, 0.55), -0.5, 0.26, 0));
+      [-0.24, 0.24].forEach(function (z) {
+        santaGroup.add(sil(new THREE.BoxGeometry(1.55, 0.05, 0.05), 0.08, -0.3, z));
+        santaGroup.add(sil(new THREE.BoxGeometry(0.05, 0.16, 0.05), -0.4, -0.2, z));
+        santaGroup.add(sil(new THREE.BoxGeometry(0.05, 0.16, 0.05), 0.5, -0.2, z));
+      });
+      // Toy sack
+      const sack = sil(new THREE.SphereGeometry(0.3, 10, 8), -0.42, 0.42, 0);
+      sack.scale.set(1, 1.15, 1);
+      santaGroup.add(sack);
+      // Santa himself
+      santaGroup.add(sil(new THREE.ConeGeometry(0.27, 0.62, 9), -0.12, 0.48, 0));
+      santaGroup.add(sil(new THREE.SphereGeometry(0.155, 10, 10), -0.1, 0.88, 0));
+      const hat = sil(new THREE.ConeGeometry(0.16, 0.32, 8), -0.06, 1.08, 0);
+      hat.rotation.z = -0.35;
+      santaGroup.add(hat);
+      // Lantern: one small warm glow at the sleigh front
+      const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffc978, fog: false }));
+      lantern.position.set(0.58, 0.05, 0.3);
+      santaGroup.add(lantern);
+      const lanternGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xffbe6e, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+      lanternGlow.scale.set(0.95, 0.95, 1);
+      lanternGlow.position.copy(lantern.position);
+      santaGroup.add(lanternGlow);
+      santaGroup.add(sil(new THREE.BoxGeometry(0.04, 0.22, 0.04), 0.58, 0.2, 0.3));
+      // Reins
+      const reins = sil(new THREE.BoxGeometry(2.1, 0.014, 0.014), 1.35, 0.32, 0);
+      reins.rotation.z = 0.05;
+      santaGroup.add(reins);
+      // Two reindeer in gallop silhouette
+      function makeDeer(x, isRudolph) {
+        const d = new THREE.Group();
+        d.position.set(x, 0.12, 0);
+        d.add(sil(new THREE.BoxGeometry(0.56, 0.22, 0.18), 0, 0, 0));
+        const neck = sil(new THREE.BoxGeometry(0.13, 0.34, 0.12), 0.3, 0.16, 0);
+        neck.rotation.z = -0.5;
+        d.add(neck);
+        d.add(sil(new THREE.BoxGeometry(0.24, 0.13, 0.11), 0.44, 0.32, 0));
+        const antlerGeo = new THREE.CylinderGeometry(0.013, 0.013, 0.3, 5);
+        const a1 = sil(antlerGeo, 0.4, 0.5, 0.05); a1.rotation.z = -0.4; d.add(a1);
+        const a2 = sil(antlerGeo, 0.4, 0.5, -0.05); a2.rotation.z = -0.4; d.add(a2);
+        const a3 = sil(new THREE.CylinderGeometry(0.01, 0.01, 0.16, 5), 0.46, 0.52, 0.05); a3.rotation.z = 0.7; d.add(a3);
+        const a4 = sil(new THREE.CylinderGeometry(0.01, 0.01, 0.16, 5), 0.46, 0.52, -0.05); a4.rotation.z = 0.7; d.add(a4);
+        const legGeo = new THREE.BoxGeometry(0.045, 0.34, 0.045);
+        const l1 = sil(legGeo, 0.26, -0.2, 0.06); l1.rotation.z = 0.75; d.add(l1);
+        const l2 = sil(legGeo, 0.26, -0.2, -0.06); l2.rotation.z = 0.55; d.add(l2);
+        const l3 = sil(legGeo, -0.26, -0.2, 0.06); l3.rotation.z = -0.75; d.add(l3);
+        const l4 = sil(legGeo, -0.26, -0.2, -0.06); l4.rotation.z = -0.55; d.add(l4);
+        d.add(sil(new THREE.BoxGeometry(0.14, 0.05, 0.05), -0.34, 0.08, 0));
+        if (isRudolph) {
+          const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff4455, fog: false }));
+          nose.position.set(0.58, 0.3, 0);
+          d.add(nose);
+          const noseGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff5560, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+          noseGlow.scale.set(0.4, 0.4, 1);
+          noseGlow.position.copy(nose.position);
+          d.add(noseGlow);
+        }
+        return d;
+      }
+      santaGroup.add(makeDeer(1.3, false));
+      santaGroup.add(makeDeer(2.25, true));
+      santaGroup.scale.set(1.12, 1.12, 1.12);
+      santaGroup.visible = false;
       scene.add(santaGroup);
 
-      function createLuminousMesh(geo, color = 0xffe29a, opacity = 0.92) {
-        return new THREE.Mesh(
-          geo,
-          new THREE.MeshBasicMaterial({ color, transparent: true, opacity })
-        );
-      }
-
-      // Sleigh
-      const sleighBase = createLuminousMesh(new THREE.BoxGeometry(1.1, 0.38, 0.52), 0xf6cf74);
-      santaGroup.add(sleighBase);
-      const runnerL = createLuminousMesh(new THREE.BoxGeometry(1.35, 0.06, 0.06), 0xfff2c2);
-      runnerL.position.set(0.05, -0.26, 0.22);
-      santaGroup.add(runnerL);
-      const runnerR = runnerL.clone();
-      runnerR.position.z = -0.22;
-      santaGroup.add(runnerR);
-
-      // Santa silhouette
-      const santaBody = createLuminousMesh(new THREE.ConeGeometry(0.24, 0.55, 8), 0xffe59e);
-      santaBody.position.set(0.1, 0.42, 0);
-      santaGroup.add(santaBody);
-      const santaHead = createLuminousMesh(new THREE.SphereGeometry(0.14, 10, 10), 0xfff3cf);
-      santaHead.position.set(0.12, 0.72, 0);
-      santaGroup.add(santaHead);
-
-      // 3 Graceful Reindeer in front
-      for (let rIdx = 0; rIdx < 3; rIdx++) {
-        const deer = new THREE.Group();
-        deer.position.set(1.35 + rIdx * 0.92, 0.08 + rIdx * 0.06, 0);
-        const body = createLuminousMesh(new THREE.BoxGeometry(0.45, 0.2, 0.16), 0xffdc85);
-        deer.add(body);
-        const neck = createLuminousMesh(new THREE.BoxGeometry(0.12, 0.28, 0.12), 0xffdc85);
-        neck.position.set(0.2, 0.18, 0);
-        neck.rotation.z = -0.35;
-        deer.add(neck);
-        if (rIdx === 2) {
-          // Rudolph glowing nose
-          const nose = createLuminousMesh(new THREE.SphereGeometry(0.055, 8, 8), 0xff4d5e);
-          nose.position.set(0.32, 0.28, 0);
-          deer.add(nose);
-        }
-        santaGroup.add(deer);
-      }
-
-      // Soft aura around sleigh
-      const sleighAura = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: goldGlowTex,
-        color: 0xffdc7a,
-        transparent: true,
-        opacity: 0.55,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending
-      }));
-      sleighAura.scale.set(4.5, 2.2, 1);
-      sleighAura.position.set(1.2, 0.2, 0);
-      santaGroup.add(sleighAura);
-      santaGroup.visible = false;
-
-      // ---------- 8. 4 Luxury 3D Gift Boxes (No Text Labels!) ----------
+      // ---------- 16. Gifts: rich materials, metal ribbons, bows, cream tags ----------
       const giftConfigs = [
-        { boxColor: 0x8f1d2c, ribbonColor: 0xf5d37e, targetPos: new THREE.Vector3(-2.1, 0.1, 1.35), rotY: 0.35 },
-        { boxColor: 0x165b44, ribbonColor: 0xf6e6c2, targetPos: new THREE.Vector3(-0.75, 0.1, 2.05), rotY: -0.2 },
-        { boxColor: 0x1d3f7a, ribbonColor: 0xd9e6ff, targetPos: new THREE.Vector3(0.8, 0.1, 2.02), rotY: 0.22 },
-        { boxColor: 0xc29545, ribbonColor: 0x7d1a26, targetPos: new THREE.Vector3(2.1, 0.1, 1.3), rotY: -0.32 }
+        { w: 0.95, h: 0.7, d: 0.95, box: new THREE.MeshStandardMaterial({ color: 0x7e1622, roughness: 0.88, metalness: 0 }), ribbon: new THREE.MeshStandardMaterial({ color: 0xd8ab52, metalness: 0.9, roughness: 0.3, envMap: envTex, envMapIntensity: 1 }), x: -2.15, z: 1.5, rotY: 0.35 },
+        { w: 0.8, h: 0.95, d: 0.8, box: new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.7, metalness: 0.02 }), ribbon: new THREE.MeshStandardMaterial({ color: 0xe9d194, metalness: 0.8, roughness: 0.36, envMap: envTex, envMapIntensity: 0.9 }), x: -0.8, z: 2.15, rotY: -0.2 },
+        { w: 1.1, h: 0.55, d: 0.85, box: new THREE.MeshStandardMaterial({ color: 0x1d3461, roughness: 0.62, metalness: 0.05 }), ribbon: new THREE.MeshStandardMaterial({ color: 0xd9e2f0, metalness: 0.75, roughness: 0.3, envMap: envTex, envMapIntensity: 0.9 }), x: 0.85, z: 2.1, rotY: 0.22 },
+        { w: 0.85, h: 0.8, d: 0.85, box: new THREE.MeshStandardMaterial({ color: 0xc9a24f, metalness: 0.85, roughness: 0.34, envMap: envTex, envMapIntensity: 1 }), ribbon: new THREE.MeshStandardMaterial({ color: 0x8f1d2c, roughness: 0.55, metalness: 0.1 }), x: 2.15, z: 1.45, rotY: -0.32 }
       ];
+      const tagMat = new THREE.MeshStandardMaterial({ color: 0xf7ecd2, roughness: 0.85, side: THREE.DoubleSide });
 
       const giftMeshes = [];
       const giftHitTargets = [];
-      const giftStates = giftConfigs.map(() => ({
-        dropped: false,
-        landed: false,
-        opened: false,
-        dropProgress: 0,
-        startY: 7.2
-      }));
-
-      giftConfigs.forEach((cfg, idx) => {
-        const gGroup = new THREE.Group();
-        const boxMat = new THREE.MeshStandardMaterial({
-          color: cfg.boxColor,
-          roughness: 0.55,
-          metalness: 0.15
-        });
-        const ribMat = new THREE.MeshStandardMaterial({
-          color: cfg.ribbonColor,
-          roughness: 0.3,
-          metalness: 0.45
-        });
-
-        // Main cube
-        const base = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.72, 0.86), boxMat);
-        base.userData.giftIndex = idx;
-        gGroup.add(base);
-        giftHitTargets.push(base);
-
-        // Lid
-        const lid = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.16, 0.94), boxMat);
-        lid.position.y = 0.4;
-        lid.userData.giftIndex = idx;
-        gGroup.add(lid);
-        giftHitTargets.push(lid);
-
-        // Crossed Ribbons
-        const rib1 = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.88, 0.16), ribMat);
-        rib1.position.y = 0.04;
-        rib1.userData.giftIndex = idx;
-        gGroup.add(rib1);
-        giftHitTargets.push(rib1);
-
-        const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.88, 0.96), ribMat);
-        rib2.position.y = 0.04;
-        rib2.userData.giftIndex = idx;
-        gGroup.add(rib2);
-        giftHitTargets.push(rib2);
-
-        // Bow loops
-        const bowL = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.04, 8, 18), ribMat);
-        bowL.position.set(-0.14, 0.54, 0);
-        bowL.rotation.y = Math.PI / 4;
-        gGroup.add(bowL);
-
-        const bowR = bowL.clone();
-        bowR.position.x = 0.14;
-        bowR.rotation.y = -Math.PI / 4;
-        gGroup.add(bowR);
-
-        gGroup.position.set(cfg.targetPos.x, 7.5, cfg.targetPos.z);
-        gGroup.rotation.y = cfg.rotY;
-        gGroup.visible = false;
-        scene.add(gGroup);
-        giftMeshes.push(gGroup);
+      const giftStates = giftConfigs.map(function () {
+        return { dropped: false, landed: false, opened: false, dropProgress: 0, startY: 8 };
       });
 
-      // ---------- 9. Opening Santa Delivery Sequence ----------
+      giftConfigs.forEach(function (cfg, idx) {
+        const g = new THREE.Group();
+        const w = cfg.w, h = cfg.h, d = cfg.d;
+
+        const base = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), cfg.box);
+        base.userData.giftIndex = idx;
+        g.add(base);
+        giftHitTargets.push(base);
+
+        const lid = new THREE.Mesh(new THREE.BoxGeometry(w * 1.08, h * 0.22, d * 1.08), cfg.box);
+        lid.position.y = h / 2 + h * 0.08;
+        lid.userData.giftIndex = idx;
+        g.add(lid);
+        giftHitTargets.push(lid);
+
+        const ribH = h * 1.24;
+        const rib1 = new THREE.Mesh(new THREE.BoxGeometry(w * 1.1, ribH, 0.15), cfg.ribbon);
+        rib1.position.y = h * 0.06;
+        rib1.userData.giftIndex = idx;
+        g.add(rib1);
+        giftHitTargets.push(rib1);
+        const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.15, ribH, d * 1.1), cfg.ribbon);
+        rib2.position.y = h * 0.06;
+        rib2.userData.giftIndex = idx;
+        g.add(rib2);
+        giftHitTargets.push(rib2);
+
+        // Proper bow: two torus loops + centre knot
+        const bowMat = cfg.ribbon;
+        const bowL = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.038, 8, 18), bowMat);
+        bowL.position.set(-0.12, h / 2 + h * 0.22 + 0.07, 0);
+        bowL.rotation.y = Math.PI / 4;
+        bowL.rotation.x = 0.5;
+        g.add(bowL);
+        const bowR = bowL.clone();
+        bowR.position.x = 0.12;
+        bowR.rotation.y = -Math.PI / 4;
+        g.add(bowR);
+        const knot = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), bowMat);
+        knot.position.set(0, h / 2 + h * 0.22 + 0.05, 0);
+        g.add(knot);
+
+        // Small cream tag leaning on the front face
+        const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.17, 0.115), tagMat);
+        tag.position.set(w * 0.22, -h * 0.08, d / 2 + 0.012);
+        tag.rotation.z = -0.14;
+        g.add(tag);
+        const tagHole = new THREE.Mesh(new THREE.CircleGeometry(0.016, 10), new THREE.MeshBasicMaterial({ color: 0x8a6a1f }));
+        tagHole.position.set(w * 0.22 - 0.055, -h * 0.08 + 0.038, d / 2 + 0.014);
+        g.add(tagHole);
+
+        // Soft shadow blob underneath
+        const blob = new THREE.Mesh(
+          new THREE.CircleGeometry(Math.max(w, d) * 0.82, 24),
+          new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })
+        );
+        blob.rotation.x = -Math.PI / 2;
+        blob.position.y = -h / 2 + 0.015;
+        g.add(blob);
+
+        g.position.set(cfg.x, 8, cfg.z);
+        g.rotation.y = cfg.rotY;
+        g.visible = false;
+        scene.add(g);
+        giftMeshes.push(g);
+      });
+
+      // ---------- 17. Santa delivery sequence ----------
       const hintPill = document.getElementById('hintPill');
       let deliveryActive = false;
       let deliveryStart = 0;
-      const deliveryDuration = 4000;
-      const dropThresholds = [0.26, 0.38, 0.50, 0.62];
+      const deliveryDuration = 5400;
+      const dropThresholds = [0.3, 0.44, 0.58, 0.72];
+      let santaCurrentY = 10;
 
+      function santaPath(t) {
+        return {
+          x: -17 + 34 * t,
+          y: 9.6 + Math.sin(t * Math.PI) * 1.5,
+          z: -13.5 + Math.cos(t * Math.PI) * 0.8
+        };
+      }
       function startDelivery() {
         deliveryActive = true;
         deliveryStart = performance.now();
         santaGroup.visible = true;
       }
+      setTimeout(startDelivery, 600);
 
-      setTimeout(startDelivery, 500);
-
-      // ---------- 10. Touch / Mouse 3D Drag Rotation + Raycasting ----------
+      // ---------- 18. Drag rotation + tap raycasting ----------
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
       let isDragging = false;
-      let pointerDownPos = { x: 0, y: 0 };
       let prevPointerPos = { x: 0, y: 0 };
       let totalDragDist = 0;
       let hoveredGiftIdx = -1;
 
-      container.addEventListener('pointerdown', (e) => {
+      container.addEventListener('pointerdown', function (e) {
         isDragging = true;
         totalDragDist = 0;
-        pointerDownPos = { x: e.clientX, y: e.clientY };
         prevPointerPos = { x: e.clientX, y: e.clientY };
         container.classList.add('dragging');
       });
 
-      window.addEventListener('pointermove', (e) => {
+      window.addEventListener('pointermove', function (e) {
         if (isDragging) {
           const dx = e.clientX - prevPointerPos.x;
           const dy = e.clientY - prevPointerPos.y;
           totalDragDist += Math.hypot(dx, dy);
           targetAzimuth -= dx * 0.0075;
-          targetPolar = Math.max(0.06, Math.min(0.62, targetPolar + dy * 0.004));
+          targetPolar = Math.max(0.05, Math.min(0.6, targetPolar + dy * 0.004));
           prevPointerPos = { x: e.clientX, y: e.clientY };
           return;
         }
-
-        // Hover cursor feedback
         pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
         pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
         raycaster.setFromCamera(pointer, camera);
-
         const giftHits = raycaster.intersectObjects(giftHitTargets, false);
-        const starHits = raycaster.intersectObject(starMesh, false);
-        if (giftHits.length > 0) {
-          const idx = giftHits[0].object.userData.giftIndex;
-          if (giftStates[idx].landed) {
-            hoveredGiftIdx = idx;
-            container.classList.add('hover-target');
-            return;
-          }
+        if (giftHits.length > 0 && giftStates[giftHits[0].object.userData.giftIndex].landed) {
+          hoveredGiftIdx = giftHits[0].object.userData.giftIndex;
+          container.classList.add('hover-target');
+          return;
         }
         hoveredGiftIdx = -1;
-        if (starHits.length > 0) {
-          container.classList.add('hover-target');
-        } else {
-          container.classList.remove('hover-target');
-        }
+        const starHits = raycaster.intersectObjects([starHit, starMesh], false);
+        container.classList.toggle('hover-target', starHits.length > 0);
       });
 
-      window.addEventListener('pointerup', (e) => {
+      window.addEventListener('pointerup', function (e) {
         if (!isDragging) return;
         isDragging = false;
         container.classList.remove('dragging');
-
-        // Treat as tap/click if drag distance is tiny
-        if (totalDragDist < 8) {
+        if (totalDragDist < 9) {
           pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
           pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
           raycaster.setFromCamera(pointer, camera);
-
-          const starHits = raycaster.intersectObject(starMesh, false);
+          const starHits = raycaster.intersectObjects([starHit, starMesh], false);
           if (starHits.length > 0) {
             jewelMode = !jewelMode;
-            recolorTree();
-            spawnBurst(0, treeHeight + 0.35, 0, 38, 0.11);
+            applyLightPalette();
+            const wp = new THREE.Vector3();
+            starGroup.getWorldPosition(wp);
+            spawnBurst(wp.x, wp.y, wp.z, 38, 0.11);
             playChime();
             return;
           }
-
           const giftHits = raycaster.intersectObjects(giftHitTargets, false);
           if (giftHits.length > 0) {
             const idx = giftHits[0].object.userData.giftIndex;
-            if (giftStates[idx].landed) {
-              openGiftModal(idx);
-            }
+            if (giftStates[idx].landed) openGiftModal(idx);
           }
         }
       });
 
-      // ---------- 11. Gift Modal Contents ----------
+      // ---------- 19. Gift modals (content unchanged from V1) ----------
       const modalBackdrop = document.getElementById('modalBackdrop');
       const modalClose = document.getElementById('modalClose');
       const modalTag = document.getElementById('modalTag');
@@ -1088,24 +1319,9 @@
       let fortuneIndex = 0;
 
       const polaroidMemories = [
-        {
-          title: '雪夜木屋的暖光',
-          sub: '2026 圣诞季 · 愿窗外大雪纷飞，屋里永远温暖',
-          sky: '#102042',
-          accent: '#ffd86b'
-        },
-        {
-          title: '热可可与圣诞树',
-          sub: '冬日限定 · 这一年所有的美好都值得被记住',
-          sky: '#1e1b3a',
-          accent: '#ff8fa3'
-        },
-        {
-          title: '驯鹿经过的星空',
-          sub: '平安夜 · 愿望已经顺着星光寄往明年啦',
-          sky: '#0c2738',
-          accent: '#7de0b7'
-        }
+        { title: '雪夜木屋的暖光', sub: '2026 圣诞季 · 愿窗外大雪纷飞，屋里永远温暖', sky: '#102042', accent: '#ffd86b' },
+        { title: '热可可与圣诞树', sub: '冬日限定 · 这一年所有的美好都值得被记住', sky: '#1e1b3a', accent: '#ff8fa3' },
+        { title: '驯鹿经过的星空', sub: '平安夜 · 愿望已经顺着星光寄往明年啦', sky: '#0c2738', accent: '#7de0b7' }
       ];
 
       const fortunes = [
@@ -1115,95 +1331,78 @@
         { keyword: '万事胜意', desc: '不用急着赶路，去吹吹冬天的风，去吃想吃的甜品，一切都会比想象中更好。' }
       ];
 
-      function buildPolaroidSvg(sceneObj) {
-        return `
-          <svg viewBox="0 0 320 190" width="100%" style="display:block;">
-            <rect width="320" height="190" fill="${sceneObj.sky}"/>
-            <circle cx="265" cy="42" r="22" fill="${sceneObj.accent}" opacity="0.9"/>
-            <circle cx="52" cy="34" r="2" fill="#fff"/>
-            <circle cx="115" cy="24" r="1.5" fill="#fff"/>
-            <circle cx="195" cy="40" r="2" fill="#fff"/>
-            <circle cx="145" cy="56" r="1.5" fill="#fff"/>
-            <path d="M0 150 Q90 125 180 148 T320 140 L320 190 L0 190 Z" fill="#eef5ff"/>
-            <rect x="115" y="102" width="84" height="50" fill="#7c4b32"/>
-            <polygon points="105,104 157,68 209,104" fill="#b7323c"/>
-            <rect x="172" y="72" width="12" height="22" fill="#5b3422"/>
-            <rect x="148" y="122" width="18" height="30" rx="2" fill="#4f2c1b"/>
-            <rect x="125" y="114" width="16" height="14" rx="2" fill="#ffd86b"/>
-            <rect x="173" y="114" width="16" height="14" rx="2" fill="#ffd86b"/>
-            <polygon points="74,98 54,148 94,148" fill="#1b6b4c"/>
-            <polygon points="246,104 228,148 264,148" fill="#1b6b4c"/>
-          </svg>
-        `;
+      function buildPolaroidSvg(s) {
+        return '<svg viewBox="0 0 320 190" width="100%" style="display:block;">' +
+          '<rect width="320" height="190" fill="' + s.sky + '"/>' +
+          '<circle cx="265" cy="42" r="22" fill="' + s.accent + '" opacity="0.9"/>' +
+          '<circle cx="52" cy="34" r="2" fill="#fff"/><circle cx="115" cy="24" r="1.5" fill="#fff"/>' +
+          '<circle cx="195" cy="40" r="2" fill="#fff"/><circle cx="145" cy="56" r="1.5" fill="#fff"/>' +
+          '<path d="M0 150 Q90 125 180 148 T320 140 L320 190 L0 190 Z" fill="#eef5ff"/>' +
+          '<rect x="115" y="102" width="84" height="50" fill="#7c4b32"/>' +
+          '<polygon points="105,104 157,68 209,104" fill="#b7323c"/>' +
+          '<rect x="172" y="72" width="12" height="22" fill="#5b3422"/>' +
+          '<rect x="148" y="122" width="18" height="30" rx="2" fill="#4f2c1b"/>' +
+          '<rect x="125" y="114" width="16" height="14" rx="2" fill="#ffd86b"/>' +
+          '<rect x="173" y="114" width="16" height="14" rx="2" fill="#ffd86b"/>' +
+          '<polygon points="74,98 54,148 94,148" fill="#1b6b4c"/>' +
+          '<polygon points="246,104 228,148 264,148" fill="#1b6b4c"/></svg>';
       }
 
       function renderModal(giftIndex) {
         if (giftIndex === 0) {
           modalTag.textContent = '惊喜礼盒 · 圣诞来信';
-          modalTag.style.background = '#fbe6e4';
-          modalTag.style.color = '#9e272f';
           modalTitle.textContent = '致亲爱的你：圣诞快乐';
-          modalBody.innerHTML = `
-            <div class="letter-paper">冬天的雪总是落得很轻，转眼又到一年圣诞。\n感谢这一年里所有的陪伴、理解和那些一起笑出声的瞬间。\n无论今年过得忙碌还是悠闲，都希望在这个闪烁着暖光的夜晚，你能收到一份实实在在的开心。\n祝你圣诞快乐，平安顺遂，明年也请继续多多关照！</div>
-            <div class="letter-sign">—— 你的圣诞老友 · 2026.12.25</div>
-          `;
+          modalBody.innerHTML =
+            '<div class="letter-paper">冬天的雪总是落得很轻，转眼又到一年圣诞。\n感谢这一年里所有的陪伴、理解和那些一起笑出声的瞬间。\n无论今年过得忙碌还是悠闲，都希望在这个闪烁着暖光的夜晚，你能收到一份实实在在的开心。\n祝你圣诞快乐，平安顺遂，明年也请继续多多关照！</div>' +
+            '<div class="letter-sign">—— 你的圣诞老友 · 2026.12.25</div>';
         } else if (giftIndex === 1) {
           modalTag.textContent = '惊喜礼盒 · 限定兑换券';
-          modalTag.style.background = '#e1f5ec';
-          modalTag.style.color = '#176649';
           modalTitle.textContent = '冬日暖心约定兑换券';
-          modalBody.innerHTML = `
-            <div class="voucher-ticket">
-              <div class="voucher-name">🍲 任意一顿冬日大餐 / 热饮券</div>
-              <div class="voucher-desc">凭此券可随时兑换一顿热腾腾的火锅、烤肉或你最喜欢的甜品，有效期：一整个冬天，随时生效！</div>
-              <div class="stamp-badge ${voucherClaimed ? 'stamped' : ''}" id="voucherStamp">已盖章生效 ✓</div>
-            </div>
-            <button class="action-btn" id="claimVoucherBtn" type="button">
-              ${voucherClaimed ? '✨ 已收入囊中，随时可用' : '🖋️ 点击盖章领取'}
-            </button>
-          `;
+          modalBody.innerHTML =
+            '<div class="voucher-ticket">' +
+              '<div class="voucher-name">🍲 任意一顿冬日大餐 / 热饮券</div>' +
+              '<div class="voucher-desc">凭此券可随时兑换一顿热腾腾的火锅、烤肉或你最喜欢的甜品，有效期：一整个冬天，随时生效！</div>' +
+              '<div class="stamp-badge' + (voucherClaimed ? ' stamped' : '') + '" id="voucherStamp">已盖章生效 ✓</div>' +
+            '</div>' +
+            '<button class="action-btn" id="claimVoucherBtn" type="button">' +
+              (voucherClaimed ? '已收入囊中，随时可用' : '点击盖章领取') +
+            '</button>';
           const claimBtn = document.getElementById('claimVoucherBtn');
           const stamp = document.getElementById('voucherStamp');
-          claimBtn.addEventListener('click', () => {
+          claimBtn.addEventListener('click', function () {
             voucherClaimed = true;
             stamp.classList.add('stamped');
-            claimBtn.textContent = '✨ 已收入囊中，随时可用';
+            claimBtn.textContent = '已收入囊中，随时可用';
             playChime();
           });
         } else if (giftIndex === 2) {
-          const sceneObj = polaroidMemories[polaroidIndex];
+          const s = polaroidMemories[polaroidIndex];
           modalTag.textContent = '惊喜礼盒 · 冬日回忆';
-          modalTag.style.background = '#e3edff';
-          modalTag.style.color = '#244a8c';
           modalTitle.textContent = '冬夜拍立得相册';
-          modalBody.innerHTML = `
-            <div class="polaroid">
-              <div class="polaroid-art">${buildPolaroidSvg(sceneObj)}</div>
-              <div class="polaroid-caption">${sceneObj.title}</div>
-              <div class="polaroid-sub">${sceneObj.sub}</div>
-            </div>
-            <button class="action-btn secondary" id="nextPolaroidBtn" type="button">🔄 换一张冬日记忆卡片</button>
-          `;
-          document.getElementById('nextPolaroidBtn').addEventListener('click', () => {
+          modalBody.innerHTML =
+            '<div class="polaroid">' +
+              '<div class="polaroid-art">' + buildPolaroidSvg(s) + '</div>' +
+              '<div class="polaroid-caption">' + s.title + '</div>' +
+              '<div class="polaroid-sub">' + s.sub + '</div>' +
+            '</div>' +
+            '<button class="action-btn" id="nextPolaroidBtn" type="button">换一张冬日记忆卡片</button>';
+          document.getElementById('nextPolaroidBtn').addEventListener('click', function () {
             polaroidIndex = (polaroidIndex + 1) % polaroidMemories.length;
             renderModal(2);
             playChime();
           });
         } else if (giftIndex === 3) {
-          const fortune = fortunes[fortuneIndex];
+          const f = fortunes[fortuneIndex];
           modalTag.textContent = '惊喜礼盒 · 幸运彩蛋';
-          modalTag.style.background = '#fff0d6';
-          modalTag.style.color = '#a35b14';
           modalTitle.textContent = '今日圣诞幸运签';
-          modalBody.innerHTML = `
-            <div class="fortune-box">
-              <div style="font-size:12px; opacity:0.8;">✨ 2027 专属祝福关键词</div>
-              <div class="fortune-keyword">${fortune.keyword}</div>
-              <div class="fortune-text">${fortune.desc}</div>
-            </div>
-            <button class="action-btn" id="nextFortuneBtn" type="button">🎲 再抽一签</button>
-          `;
-          document.getElementById('nextFortuneBtn').addEventListener('click', () => {
+          modalBody.innerHTML =
+            '<div class="fortune-box">' +
+              '<div class="fortune-head">2027 专属祝福关键词</div>' +
+              '<div class="fortune-keyword">' + f.keyword + '</div>' +
+              '<div class="fortune-text">' + f.desc + '</div>' +
+            '</div>' +
+            '<button class="action-btn" id="nextFortuneBtn" type="button">再抽一签</button>';
+          document.getElementById('nextFortuneBtn').addEventListener('click', function () {
             fortuneIndex = (fortuneIndex + 1) % fortunes.length;
             renderModal(3);
             playChime();
@@ -1220,143 +1419,110 @@
         modalBackdrop.classList.add('open');
       }
 
-      function closeModal() {
-        modalBackdrop.classList.remove('open');
-      }
-
+      function closeModal() { modalBackdrop.classList.remove('open'); }
       modalClose.addEventListener('click', closeModal);
-      modalBackdrop.addEventListener('click', (e) => {
-        if (e.target === modalBackdrop) closeModal();
-      });
-      document.addEventListener('keydown', (e) => {
+      modalBackdrop.addEventListener('click', function (e) { if (e.target === modalBackdrop) closeModal(); });
+      document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape' && modalBackdrop.classList.contains('open')) closeModal();
       });
 
-      // ---------- 12. Resize Handler ----------
-      window.addEventListener('resize', () => {
+      // ---------- 20. Resize ----------
+      window.addEventListener('resize', function () {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        pickCamRadius();
       });
 
-      // ---------- 13. Main Animation Loop ----------
+      // ---------- 21. Main loop ----------
       const clock = new THREE.Clock();
+
+      function bounceEase(p) {
+        if (p < 1 / 2.75) return 7.5625 * p * p;
+        if (p < 2 / 2.75) { const q = p - 1.5 / 2.75; return 7.5625 * q * q + 0.75; }
+        if (p < 2.5 / 2.75) { const q = p - 2.25 / 2.75; return 7.5625 * q * q + 0.9375; }
+        const q = p - 2.625 / 2.75; return 7.5625 * q * q + 0.984375;
+      }
 
       function animate() {
         requestAnimationFrame(animate);
-        const dt = clock.getDelta();
+        const dt = Math.min(clock.getDelta(), 0.05);
         const elapsed = clock.getElapsedTime();
 
-        // Smoothly damp 3D camera rotation
         currentAzimuth += (targetAzimuth - currentAzimuth) * 0.08;
         currentPolar += (targetPolar - currentPolar) * 0.08;
         updateCameraTransform();
 
-        // Gentle tree particle rotation & star pulse
-        treeGroup.rotation.y = Math.sin(elapsed * 0.25) * 0.08 + elapsed * 0.06;
+        // Tree life: slow rotation, star spin & halo pulse, light flicker & twinkle
+        treeGroup.rotation.y = Math.sin(elapsed * 0.22) * 0.07 + elapsed * 0.055;
         starMesh.rotation.y = elapsed * 0.9;
-        const starScale = 1 + Math.sin(elapsed * 2.5) * 0.08;
-        starHalo.scale.set(2.2 * starScale, 2.2 * starScale, 1);
+        const starScale = 1 + Math.sin(elapsed * 2.4) * 0.09;
+        starHalo.scale.set(2.3 * starScale, 2.3 * starScale, 1);
+        treeWarmLight.intensity = 1.22 + Math.sin(elapsed * 2.1) * 0.08 + Math.sin(elapsed * 5.3) * 0.05;
+        lightGroups.forEach(function (mat, i) {
+          mat.opacity = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(elapsed * 2.3 + i * 2.1));
+        });
+        sparkMat.opacity = 0.38 + 0.22 * (0.5 + 0.5 * Math.sin(elapsed * 1.6));
+        starMatA.opacity = 0.72 + 0.2 * Math.sin(elapsed * 0.7);
+        starMatB.opacity = 0.78 + 0.2 * Math.sin(elapsed * 0.9 + 2);
 
-        // Snowfall update
-        const sArr = snowGeo.attributes.position.array;
-        for (let i = 0; i < snowCount; i++) {
-          sArr[i * 3 + 1] -= snowSpeeds[i];
-          sArr[i * 3] += Math.sin(elapsed * 0.8 + i) * 0.004;
-          if (sArr[i * 3 + 1] < -0.4) {
-            sArr[i * 3 + 1] = 13.5;
-            sArr[i * 3] = (Math.random() - 0.5) * 28;
-          }
-        }
-        snowGeo.attributes.position.needsUpdate = true;
+        updateSnow(snowMid, elapsed, 0.004);
+        updateSnow(snowNear, elapsed, 0.01);
+        updateBursts();
 
-        // Burst / trail particles update
-        const bArr = burstGeo.attributes.position.array;
-        for (let i = 0; i < maxBursts; i++) {
-          if (burstData[i].active) {
-            bArr[i * 3] += burstData[i].vx;
-            bArr[i * 3 + 1] += burstData[i].vy;
-            bArr[i * 3 + 2] += burstData[i].vz;
-            burstData[i].vy -= 0.0018;
-            burstData[i].life -= 0.02;
-            if (burstData[i].life <= 0) {
-              burstData[i].active = false;
-              bArr[i * 3 + 1] = -999;
-            }
-          }
-        }
-        burstGeo.attributes.position.needsUpdate = true;
-
-        // Santa Sleigh Delivery
+        // Santa delivery flight
         if (deliveryActive) {
           const t = Math.min((performance.now() - deliveryStart) / deliveryDuration, 1);
-          const x = -14 + 28 * t;
-          const y = 7.1 + Math.sin(t * Math.PI) * 1.6;
-          const z = -2.2 + Math.cos(t * Math.PI) * 1.4;
-          santaGroup.position.set(x, y, z);
-          santaGroup.rotation.z = Math.cos(t * Math.PI) * 0.14;
+          const p = santaPath(t);
+          santaCurrentY = p.y;
+          santaGroup.position.set(p.x, p.y, p.z);
+          santaGroup.rotation.z = Math.cos(t * Math.PI) * 0.1;
+          santaGroup.rotation.y = Math.sin(t * Math.PI * 2) * 0.03;
+          if (Math.random() < 0.75) spawnBurst(p.x - 0.7, p.y - 0.1, p.z, 2, 0.04);
 
-          if (Math.random() < 0.75) {
-            spawnBurst(x - 0.6, y, z, 2, 0.04);
-          }
-
-          dropThresholds.forEach((th, idx) => {
+          dropThresholds.forEach(function (th, idx) {
             if (t >= th && !giftStates[idx].dropped) {
               giftStates[idx].dropped = true;
+              giftStates[idx].startY = santaCurrentY - 0.4;
               giftMeshes[idx].visible = true;
-              giftMeshes[idx].position.set(giftConfigs[idx].targetPos.x, y - 0.3, giftConfigs[idx].targetPos.z);
-              giftStates[idx].startY = y - 0.3;
+              giftMeshes[idx].position.set(giftConfigs[idx].x, giftStates[idx].startY, giftConfigs[idx].z);
             }
           });
 
           if (t >= 1) {
             deliveryActive = false;
             santaGroup.visible = false;
-            hintPill.textContent = '✨ 拖动可旋转 3D 视角 · 点击树下礼盒拆开惊喜';
-            setTimeout(() => hintPill.classList.add('hidden'), 4800);
+            hintPill.textContent = '拖动可旋转视角 · 点击树下礼盒拆开惊喜';
+            setTimeout(function () { hintPill.classList.add('hidden'); }, 5200);
           }
         }
 
-        // Gift Drop & Bounce Physics
-        giftStates.forEach((st, idx) => {
+        // Gift drop / bounce / hover
+        giftStates.forEach(function (st, idx) {
+          const cfg = giftConfigs[idx];
+          const targetY = cfg.h / 2;
           if (st.dropped && !st.landed) {
             st.dropProgress = Math.min(st.dropProgress + dt * 0.95, 1);
-            // Ease out bounce
-            const p = st.dropProgress;
-            let ease;
-            if (p < 1 / 2.75) {
-              ease = 7.5625 * p * p;
-            } else if (p < 2 / 2.75) {
-              const p2 = p - 1.5 / 2.75;
-              ease = 7.5625 * p2 * p2 + 0.75;
-            } else if (p < 2.5 / 2.75) {
-              const p2 = p - 2.25 / 2.75;
-              ease = 7.5625 * p2 * p2 + 0.9375;
-            } else {
-              const p2 = p - 2.625 / 2.75;
-              ease = 7.5625 * p2 * p2 + 0.984375;
-            }
-            const targetY = giftConfigs[idx].targetPos.y;
+            const ease = bounceEase(st.dropProgress);
             giftMeshes[idx].position.y = st.startY + (targetY - st.startY) * ease;
-            if (p >= 1) {
+            if (st.dropProgress >= 1) {
               st.landed = true;
               giftMeshes[idx].position.y = targetY;
-              spawnBurst(giftConfigs[idx].targetPos.x, targetY + 0.4, giftConfigs[idx].targetPos.z, 20, 0.08);
+              spawnBurst(cfg.x, targetY + 0.4, cfg.z, 20, 0.08);
               playChime();
             }
           } else if (st.landed) {
-            const targetScale = hoveredGiftIdx === idx ? 1.12 : 1.0;
-            const curS = giftMeshes[idx].scale.x;
-            const nextS = curS + (targetScale - curS) * 0.14;
-            giftMeshes[idx].scale.set(nextS, nextS, nextS);
+            const targetScale = hoveredGiftIdx === idx ? 1.1 : 1.0;
+            const cur = giftMeshes[idx].scale.x;
+            const next = cur + (targetScale - cur) * 0.14;
+            giftMeshes[idx].scale.set(next, next, next);
           }
         });
 
         renderer.render(scene, camera);
       }
-
       animate();
     })();
-  </script>
-</body>
+    </script>
+  </body>
 </html>
