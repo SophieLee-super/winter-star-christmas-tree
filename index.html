@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>冬夜星尘圣诞树 · 3D 互动惊喜</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    :root {
+      --bg-top: #040712;
+      --bg-mid: #0a1329;
+      --bg-bottom: #122140;
+      --gold: #f5d37e;
+      --cream: #fcf6e8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 35%, var(--bg-bottom) 0%, var(--bg-mid) 48%, var(--bg-top) 100%);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--cream);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+
+    #webgl-container {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      cursor: grab;
+    }
+
+    #webgl-container.dragging {
+      cursor: grabbing;
+    }
+
+    #webgl-container.hover-target {
+      cursor: pointer;
+    }
+
+    /* Top Minimal Controls */
+    .top-bar {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pill-btn {
+      appearance: none;
+      border: 1px solid rgba(245, 211, 126, 0.28);
+      background: rgba(8, 15, 34, 0.58);
+      color: var(--cream);
+      padding: 8px 15px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      backdrop-filter: blur(10px);
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .pill-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(16, 28, 60, 0.78);
+      border-color: rgba(245, 211, 126, 0.65);
+    }
+
+    .pill-btn.active {
+      border-color: var(--gold);
+      background: rgba(245, 211, 126, 0.16);
+      color: #ffe8ad;
+    }
+
+    /* Bottom Subtle Hint */
+    .hint-pill {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      padding: 8px 18px;
+      border-radius: 999px;
+      background: rgba(8, 15, 34, 0.56);
+      border: 1px solid rgba(245, 211, 126, 0.24);
+      color: rgba(252, 246, 232, 0.88);
+      font-size: 12.5px;
+      letter-spacing: 0.4px;
+      white-space: nowrap;
+      backdrop-filter: blur(10px);
+      pointer-events: none;
+      transition: opacity 0.6s ease;
+    }
+
+    .hint-pill.hidden {
+      opacity: 0;
+    }
+
+    /* Gift Modal Overlay */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 6, 16, 0.74);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      position: relative;
+      width: min(94vw, 430px);
+      max-height: 86vh;
+      overflow-y: auto;
+      border-radius: 22px;
+      background: linear-gradient(180deg, #fffaf0 0%, #f9efe0 100%);
+      color: #2b2118;
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(245, 211, 126, 0.35);
+      padding: 26px 24px 24px;
+      transform: translateY(20px) scale(0.95);
+      transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .modal-backdrop.open .modal-card {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(43, 33, 24, 0.08);
+      color: #4b3d30;
+      font-size: 18px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.2s ease;
+    }
+
+    .modal-close:hover {
+      background: rgba(43, 33, 24, 0.16);
+    }
+
+    .modal-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.7px;
+      padding: 4px 11px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 14px;
+      color: #231911;
+    }
+
+    .letter-paper {
+      background: repeating-linear-gradient(
+        transparent,
+        transparent 27px,
+        rgba(188, 157, 118, 0.24) 28px
+      );
+      border: 1px solid #eadcc6;
+      border-radius: 12px;
+      padding: 16px 16px 14px;
+      line-height: 28px;
+      font-size: 14.5px;
+      color: #3d3025;
+      white-space: pre-line;
+    }
+
+    .letter-sign {
+      margin-top: 12px;
+      text-align: right;
+      font-size: 13px;
+      color: #7d6249;
+      font-weight: 600;
+    }
+
+    .voucher-ticket {
+      border: 2px dashed #b9313b;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #fff7ee 0%, #ffe8d6 100%);
+      padding: 18px;
+      text-align: center;
+    }
+
+    .voucher-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #9e222b;
+      margin-bottom: 6px;
+    }
+
+    .voucher-desc {
+      font-size: 13.5px;
+      color: #5b4636;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+
+    .stamp-badge {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 6px 16px;
+      border: 2.5px solid #b9313b;
+      border-radius: 8px;
+      color: #b9313b;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 1px;
+      transform: rotate(-6deg) scale(1.2);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .stamp-badge.stamped {
+      opacity: 1;
+      transform: rotate(-6deg) scale(1);
+    }
+
+    .polaroid {
+      background: #ffffff;
+      border: 1px solid #e7dfd1;
+      border-radius: 10px;
+      padding: 12px 12px 16px;
+      box-shadow: 0 8px 22px rgba(44, 36, 29, 0.12);
+      text-align: center;
+    }
+
+    .polaroid-art {
+      width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 10px;
+      background: #0f1b38;
+    }
+
+    .polaroid-caption {
+      font-size: 14px;
+      color: #3d3025;
+      font-weight: 600;
+    }
+
+    .polaroid-sub {
+      font-size: 12px;
+      color: #8a7561;
+      margin-top: 4px;
+    }
+
+    .fortune-box {
+      border-radius: 14px;
+      padding: 22px 16px;
+      background: linear-gradient(145deg, #1b2f57 0%, #0e1a36 100%);
+      color: #fff6dc;
+      text-align: center;
+      border: 1px solid rgba(245, 211, 126, 0.4);
+    }
+
+    .fortune-keyword {
+      font-size: 25px;
+      font-weight: 800;
+      color: #f5d37e;
+      margin: 8px 0;
+      letter-spacing: 2px;
+    }
+
+    .fortune-text {
+      font-size: 14px;
+      line-height: 1.65;
+      color: #e9eefc;
+    }
+
+    .action-btn {
+      margin-top: 14px;
+      width: 100%;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 10px;
+      background: #b9313b;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+
+    .action-btn:hover {
+      background: #9f252e;
+    }
+
+    .action-btn:active {
+      transform: scale(0.98);
+    }
+
+    .action-btn.secondary {
+      background: #285194;
+    }
+
+    .action-btn.secondary:hover {
+      background: #1f4179;
+    }
+  </style>
+</head>
+<body>
+  <div id="webgl-container"></div>
+
+  <div class="top-bar">
+    <button class="pill-btn" id="musicBtn" type="button">🔇 圣诞音乐：关</button>
+  </div>
+
+  <div class="hint-pill" id="hintPill">✨ 圣诞老人正在派送礼物…</div>
+
+  <!-- Gift Modal -->
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card" id="modalCard">
+      <button class="modal-close" id="modalClose" type="button" aria-label="关闭弹窗">×</button>
+      <span class="modal-tag" id="modalTag">神秘礼物</span>
+      <h2 class="modal-title" id="modalTitle">礼物标题</h2>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      // ---------- 1. Web Audio API Music Box & Chimes ----------
+      let audioCtx = null;
+      let musicEnabled = false;
+      let melodyTimer = null;
+      const musicBtn = document.getElementById('musicBtn');
+
+      const jingleNotes = [
+        [659.25, 0.25], [659.25, 0.25], [659.25, 0.5],
+        [659.25, 0.25], [659.25, 0.25], [659.25, 0.5],
+        [659.25, 0.25], [783.99, 0.25], [523.25, 0.35], [587.33, 0.15], [659.25, 0.8],
+        [698.46, 0.25], [698.46, 0.25], [698.46, 0.35], [698.46, 0.15],
+        [698.46, 0.25], [659.25, 0.25], [659.25, 0.25], [659.25, 0.25],
+        [659.25, 0.25], [587.33, 0.25], [587.33, 0.25], [659.25, 0.25], [587.33, 0.45], [783.99, 0.65]
+      ];
+      let noteIdx = 0;
+
+      function ensureAudio() {
+        if (!audioCtx) {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioContextClass) audioCtx = new AudioContextClass();
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      }
+
+      function playTone(freq, duration, volume = 0.055, type = 'sine') {
+        if (!musicEnabled || !audioCtx) return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(volume, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + duration + 0.02);
+      }
+
+      function playChime() {
+        if (!musicEnabled || !audioCtx) return;
+        playTone(1046.5, 0.18, 0.065, 'triangle');
+        setTimeout(() => playTone(1318.5, 0.28, 0.055, 'triangle'), 90);
+      }
+
+      function stepMelody() {
+        if (!musicEnabled) return;
+        const [freq, dur] = jingleNotes[noteIdx];
+        playTone(freq, dur * 0.9, 0.05, 'sine');
+        noteIdx = (noteIdx + 1) % jingleNotes.length;
+        melodyTimer = setTimeout(stepMelody, dur * 1000);
+      }
+
+      musicBtn.addEventListener('click', () => {
+        ensureAudio();
+        musicEnabled = !musicEnabled;
+        if (musicEnabled) {
+          musicBtn.textContent = '🔊 圣诞音乐：开';
+          musicBtn.classList.add('active');
+          noteIdx = 0;
+          clearTimeout(melodyTimer);
+          stepMelody();
+        } else {
+          musicBtn.textContent = '🔇 圣诞音乐：关';
+          musicBtn.classList.remove('active');
+          clearTimeout(melodyTimer);
+        }
+      });
+
+      // ---------- 2. Helper: Procedural Glow Sprite Texture ----------
+      function createGlowTexture(innerColor, outerColor) {
+        const size = 128;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const g = c.getContext('2d');
+        const grad = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+        grad.addColorStop(0, innerColor);
+        grad.addColorStop(0.28, outerColor);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, size, size);
+        const tex = new THREE.CanvasTexture(c);
+        return tex;
+      }
+
+      const goldGlowTex = createGlowTexture('rgba(255, 250, 224, 1)', 'rgba(245, 200, 100, 0.45)');
+      const softSnowTex = createGlowTexture('rgba(255, 255, 255, 0.95)', 'rgba(210, 230, 255, 0.25)');
+
+      // ---------- 3. Three.js Scene Setup ----------
+      const container = document.getElementById('webgl-container');
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x081024, 0.022);
+
+      const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 160);
+      const baseCamRadius = window.innerWidth < 600 ? 15.5 : 13.0;
+      let targetAzimuth = 0;
+      let currentAzimuth = 0;
+      let targetPolar = 0.24;
+      let currentPolar = 0.24;
+
+      function updateCameraTransform() {
+        const x = Math.sin(currentAzimuth) * Math.cos(currentPolar) * baseCamRadius;
+        const z = Math.cos(currentAzimuth) * Math.cos(currentPolar) * baseCamRadius;
+        const y = Math.sin(currentPolar) * baseCamRadius + 1.8;
+        camera.position.set(x, y, z);
+        camera.lookAt(0, 2.3, 0);
+      }
+      updateCameraTransform();
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xb8ccf0, 0.75);
+      scene.add(ambientLight);
+
+      const treeWarmLight = new THREE.PointLight(0xffd275, 1.45, 20);
+      treeWarmLight.position.set(0, 3.2, 0.5);
+      scene.add(treeWarmLight);
+
+      const rimLight = new THREE.DirectionalLight(0x88b4ff, 0.9);
+      rimLight.position.set(-6, 9, -5);
+      scene.add(rimLight);
+
+      // ---------- 4. Snowy Ground & Distant Moon ----------
+      const groundGeo = new THREE.CircleGeometry(28, 64);
+      const groundMat = new THREE.MeshStandardMaterial({
+        color: 0x162544,
+        roughness: 0.92,
+        metalness: 0.08
+      });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.35;
+      scene.add(ground);
+
+      // Ground golden reflection ring under tree
+      const glowRingMat = new THREE.SpriteMaterial({
+        map: goldGlowTex,
+        color: 0xffd578,
+        transparent: true,
+        opacity: 0.38,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const glowRing = new THREE.Sprite(glowRingMat);
+      glowRing.scale.set(9.5, 4.2, 1);
+      glowRing.position.set(0, -0.1, 0);
+      scene.add(glowRing);
+
+      // Glowing Moon in sky
+      const moonSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: goldGlowTex,
+        color: 0xfff0c2,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false
+      }));
+      moonSprite.position.set(8.5, 9.2, -16);
+      moonSprite.scale.set(4.5, 4.5, 1);
+      scene.add(moonSprite);
+
+      // Background Stars
+      const starCount = 420;
+      const starPos = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.random() * Math.PI * 0.46;
+        const r = 34 + Math.random() * 14;
+        starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        starPos[i * 3 + 1] = r * Math.cos(phi) + 1;
+        starPos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+      }
+      const starGeo = new THREE.BufferGeometry();
+      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+      const starMat = new THREE.PointsMaterial({
+        size: 0.28,
+        map: softSnowTex,
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      scene.add(new THREE.Points(starGeo, starMat));
+
+      // ---------- 5. 3D Particle Christmas Tree (Layered Real Pine Branches) ----------
+      const treeGroup = new THREE.Group();
+      scene.add(treeGroup);
+
+      const treeHeight = 6.3;
+      const maxRadius = 2.65;
+      let jewelMode = false;
+
+      const foliagePosList = [];
+      const foliageColList = [];
+      const accentPosList = [];
+      const accentColList = [];
+
+      const deepPine = new THREE.Color(0x0d4f32);
+      const midEmerald = new THREE.Color(0x1b7a4e);
+      const brightJade = new THREE.Color(0x2eb872);
+      const frostTip = new THREE.Color(0xa7f3d0);
+
+      const goldPalette = [
+        new THREE.Color(0xfff6d6),
+        new THREE.Color(0xffd86b),
+        new THREE.Color(0xf6be4f),
+        new THREE.Color(0xffe9a8)
+      ];
+      const jewelPalette = [
+        new THREE.Color(0xffd86b),
+        new THREE.Color(0xff6b7a),
+        new THREE.Color(0x6ee7b7),
+        new THREE.Color(0x7dd3fc),
+        new THREE.Color(0xf9a8d4)
+      ];
+
+      // Subtle particle trunk at the base
+      for (let i = 0; i < 260; i++) {
+        const y = Math.random() * 0.95 - 0.15;
+        const ang = Math.random() * Math.PI * 2;
+        const r = Math.random() * 0.24;
+        foliagePosList.push(Math.cos(ang) * r, y, Math.sin(ang) * r);
+        foliageColList.push(0.45, 0.27, 0.16);
+      }
+
+      // Build 8 distinct overlapping tiers of drooping radial branches
+      const tierCount = 8;
+      for (let tier = 0; tier < tierCount; tier++) {
+        const tierProgress = tier / (tierCount - 1); // 0 bottom -> 1 top
+        const tierBaseY = 0.65 + tierProgress * (treeHeight - 0.95);
+        const tierRadius = maxRadius * Math.pow(1 - tierProgress * 0.86, 0.92);
+        const branchCount = Math.max(5, Math.round(14 - tierProgress * 8));
+        const tierAngleOffset = tier * 0.47;
+
+        for (let b = 0; b < branchCount; b++) {
+          const baseAngle = tierAngleOffset + (b / branchCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.18;
+          const branchLen = tierRadius * (0.86 + Math.random() * 0.22);
+          const steps = Math.max(14, Math.round(28 - tierProgress * 12));
+
+          for (let st = 0; st < steps; st++) {
+            const u = st / steps; // 0 inner trunk -> 1 outer tip
+            const r = u * branchLen;
+            // Real evergreen droop: arches slightly up then droops gracefully at the tip
+            const droop = -Math.pow(u, 1.75) * (0.48 * (1 - tierProgress * 0.55)) + Math.sin(u * Math.PI) * 0.08;
+            const yBase = tierBaseY + droop;
+
+            // Fan out pine needle clusters along each branch
+            const needlesPerStep = Math.max(2, Math.round(4 + u * 5));
+            for (let n = 0; n < needlesPerStep; n++) {
+              const fanSpread = (0.1 + u * 0.34) * (1 - tierProgress * 0.35);
+              const ang = baseAngle + (Math.random() - 0.5) * fanSpread;
+              const rJitter = r + (Math.random() - 0.5) * 0.16;
+              const yJitter = yBase + (Math.random() - 0.5) * (0.14 + u * 0.1);
+
+              foliagePosList.push(Math.cos(ang) * rJitter, yJitter, Math.sin(ang) * rJitter);
+
+              // Depth shading: darker inside, vibrant emerald mid, frost-kissed tips
+              const c = new THREE.Color();
+              if (u < 0.35) {
+                c.copy(deepPine).lerp(midEmerald, u / 0.35);
+              } else if (u < 0.82) {
+                c.copy(midEmerald).lerp(brightJade, (u - 0.35) / 0.47);
+              } else {
+                c.copy(brightJade).lerp(frostTip, (u - 0.82) / 0.18 * 0.75);
+              }
+              foliageColList.push(c.r, c.g, c.b);
+            }
+          }
+
+          // Subtle golden/frost sparkle at branch tips
+          if (b % 2 === 0) {
+            const tipY = tierBaseY - 0.45 * (1 - tierProgress * 0.55);
+            accentPosList.push(Math.cos(baseAngle) * branchLen, tipY, Math.sin(baseAngle) * branchLen);
+            const gc = goldPalette[(tier + b) % goldPalette.length];
+            accentColList.push(gc.r, gc.g, gc.b);
+          }
+        }
+      }
+
+      // Draped golden stardust garlands winding around the layered branches
+      const ribbonCount = 900;
+      for (let i = 0; i < ribbonCount; i++) {
+        const t = i / ribbonCount;
+        const y = 0.55 + t * (treeHeight - 0.75);
+        const turns = 6.5;
+        const angle = t * Math.PI * 2 * turns;
+        const tierR = maxRadius * Math.pow(1 - t * 0.86, 0.92);
+        const r = tierR * (0.98 + Math.sin(t * Math.PI * 16) * 0.06);
+        accentPosList.push(
+          Math.cos(angle) * r + (Math.random() - 0.5) * 0.08,
+          y + (Math.random() - 0.5) * 0.08,
+          Math.sin(angle) * r + (Math.random() - 0.5) * 0.08
+        );
+        const gc = goldPalette[i % goldPalette.length];
+        accentColList.push(gc.r, gc.g, gc.b);
+      }
+
+      const treeGeo = new THREE.BufferGeometry();
+      treeGeo.setAttribute('position', new THREE.Float32BufferAttribute(foliagePosList, 3));
+      treeGeo.setAttribute('color', new THREE.Float32BufferAttribute(foliageColList, 3));
+      const treeMat = new THREE.PointsMaterial({
+        size: 0.18,
+        map: softSnowTex,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.88,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      treeGroup.add(new THREE.Points(treeGeo, treeMat));
+
+      const accentGeo = new THREE.BufferGeometry();
+      accentGeo.setAttribute('position', new THREE.Float32BufferAttribute(accentPosList, 3));
+      accentGeo.setAttribute('color', new THREE.Float32BufferAttribute(accentColList, 3));
+      const accentMat = new THREE.PointsMaterial({
+        size: 0.24,
+        map: goldGlowTex,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      treeGroup.add(new THREE.Points(accentGeo, accentMat));
+
+      // Larger Bokeh Ornaments nestled in the branches
+      const orbCount = 135;
+      const orbPos = new Float32Array(orbCount * 3);
+      const orbColors = new Float32Array(orbCount * 3);
+      for (let i = 0; i < orbCount; i++) {
+        const t = (i / orbCount) * 0.88 + 0.05;
+        const y = 0.65 + t * (treeHeight - 0.95);
+        const r = maxRadius * Math.pow(1 - t * 0.86, 0.92) * (0.76 + Math.random() * 0.24);
+        const angle = t * Math.PI * 2 * 6.5 + (i % 5) * 1.25;
+        orbPos[i * 3] = Math.cos(angle) * r;
+        orbPos[i * 3 + 1] = y - 0.12;
+        orbPos[i * 3 + 2] = Math.sin(angle) * r;
+        const col = goldPalette[i % goldPalette.length];
+        orbColors[i * 3] = col.r;
+        orbColors[i * 3 + 1] = col.g;
+        orbColors[i * 3 + 2] = col.b;
+      }
+      const orbGeo = new THREE.BufferGeometry();
+      orbGeo.setAttribute('position', new THREE.BufferAttribute(orbPos, 3));
+      orbGeo.setAttribute('color', new THREE.BufferAttribute(orbColors, 3));
+      const orbMat = new THREE.PointsMaterial({
+        size: 0.48,
+        map: goldGlowTex,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.88,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const orbPoints = new THREE.Points(orbGeo, orbMat);
+      treeGroup.add(orbPoints);
+
+      // 3D Top Star (Interactive)
+      const starGroup = new THREE.Group();
+      starGroup.position.set(0, treeHeight + 0.3, 0);
+      const starShape = new THREE.Shape();
+      const outerR = 0.42, innerR = 0.18;
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 === 0 ? outerR : innerR;
+        const a = (i / 10) * Math.PI * 2 + Math.PI / 2;
+        const sx = Math.cos(a) * r;
+        const sy = Math.sin(a) * r;
+        if (i === 0) starShape.moveTo(sx, sy);
+        else starShape.lineTo(sx, sy);
+      }
+      starShape.closePath();
+      const topStarGeo = new THREE.ExtrudeGeometry(starShape, {
+        depth: 0.08,
+        bevelEnabled: true,
+        bevelThickness: 0.03,
+        bevelSize: 0.03,
+        bevelSegments: 2
+      });
+      topStarGeo.center();
+      const starMesh = new THREE.Mesh(
+        topStarGeo,
+        new THREE.MeshBasicMaterial({ color: 0xffe999 })
+      );
+      starGroup.add(starMesh);
+
+      const starHalo = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: goldGlowTex,
+        color: 0xffdf78,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      }));
+      starHalo.scale.set(2.3, 2.3, 1);
+      starGroup.add(starHalo);
+      treeGroup.add(starGroup);
+
+      function recolorTree() {
+        const palette = jewelMode ? jewelPalette : goldPalette;
+        const aCol = accentGeo.attributes.color;
+        for (let i = 0; i < aCol.count; i++) {
+          const c = palette[i % palette.length];
+          aCol.setXYZ(i, c.r, c.g, c.b);
+        }
+        aCol.needsUpdate = true;
+
+        const oCol = orbGeo.attributes.color;
+        for (let i = 0; i < orbCount; i++) {
+          const c = palette[i % palette.length];
+          oCol.setXYZ(i, c.r, c.g, c.b);
+        }
+        oCol.needsUpdate = true;
+      }
+
+      // ---------- 6. Falling Snow + Burst Sparkle Particles ----------
+      const snowCount = 320;
+      const snowPos = new Float32Array(snowCount * 3);
+      const snowSpeeds = new Float32Array(snowCount);
+      for (let i = 0; i < snowCount; i++) {
+        snowPos[i * 3] = (Math.random() - 0.5) * 28;
+        snowPos[i * 3 + 1] = Math.random() * 14;
+        snowPos[i * 3 + 2] = (Math.random() - 0.5) * 24;
+        snowSpeeds[i] = 0.015 + Math.random() * 0.025;
+      }
+      const snowGeo = new THREE.BufferGeometry();
+      snowGeo.setAttribute('position', new THREE.BufferAttribute(snowPos, 3));
+      const snowMat = new THREE.PointsMaterial({
+        size: 0.2,
+        map: softSnowTex,
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.72,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const snowPoints = new THREE.Points(snowGeo, snowMat);
+      scene.add(snowPoints);
+
+      // Dynamic burst/trail particles
+      const maxBursts = 260;
+      const burstData = [];
+      const burstPos = new Float32Array(maxBursts * 3);
+      for (let i = 0; i < maxBursts; i++) {
+        burstData.push({ active: false, vx: 0, vy: 0, vz: 0, life: 0 });
+        burstPos[i * 3 + 1] = -999;
+      }
+      const burstGeo = new THREE.BufferGeometry();
+      burstGeo.setAttribute('position', new THREE.BufferAttribute(burstPos, 3));
+      const burstMat = new THREE.PointsMaterial({
+        size: 0.34,
+        map: goldGlowTex,
+        color: 0xffe484,
+        transparent: true,
+        opacity: 0.9,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+      const burstPoints = new THREE.Points(burstGeo, burstMat);
+      scene.add(burstPoints);
+
+      function spawnBurst(x, y, z, count, spread = 0.08) {
+        let spawned = 0;
+        for (let i = 0; i < maxBursts && spawned < count; i++) {
+          if (!burstData[i].active) {
+            burstData[i].active = true;
+            burstData[i].life = 1;
+            burstData[i].vx = (Math.random() - 0.5) * spread;
+            burstData[i].vy = Math.random() * spread * 0.9 + 0.015;
+            burstData[i].vz = (Math.random() - 0.5) * spread;
+            burstPos[i * 3] = x;
+            burstPos[i * 3 + 1] = y;
+            burstPos[i * 3 + 2] = z;
+            spawned++;
+          }
+        }
+      }
+
+      // ---------- 7. 3D Santa & Reindeer Sleigh (Particle-Lit Silhouette) ----------
+      const santaGroup = new THREE.Group();
+      scene.add(santaGroup);
+
+      function createLuminousMesh(geo, color = 0xffe29a, opacity = 0.92) {
+        return new THREE.Mesh(
+          geo,
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity })
+        );
+      }
+
+      // Sleigh
+      const sleighBase = createLuminousMesh(new THREE.BoxGeometry(1.1, 0.38, 0.52), 0xf6cf74);
+      santaGroup.add(sleighBase);
+      const runnerL = createLuminousMesh(new THREE.BoxGeometry(1.35, 0.06, 0.06), 0xfff2c2);
+      runnerL.position.set(0.05, -0.26, 0.22);
+      santaGroup.add(runnerL);
+      const runnerR = runnerL.clone();
+      runnerR.position.z = -0.22;
+      santaGroup.add(runnerR);
+
+      // Santa silhouette
+      const santaBody = createLuminousMesh(new THREE.ConeGeometry(0.24, 0.55, 8), 0xffe59e);
+      santaBody.position.set(0.1, 0.42, 0);
+      santaGroup.add(santaBody);
+      const santaHead = createLuminousMesh(new THREE.SphereGeometry(0.14, 10, 10), 0xfff3cf);
+      santaHead.position.set(0.12, 0.72, 0);
+      santaGroup.add(santaHead);
+
+      // 3 Graceful Reindeer in front
+      for (let rIdx = 0; rIdx < 3; rIdx++) {
+        const deer = new THREE.Group();
+        deer.position.set(1.35 + rIdx * 0.92, 0.08 + rIdx * 0.06, 0);
+        const body = createLuminousMesh(new THREE.BoxGeometry(0.45, 0.2, 0.16), 0xffdc85);
+        deer.add(body);
+        const neck = createLuminousMesh(new THREE.BoxGeometry(0.12, 0.28, 0.12), 0xffdc85);
+        neck.position.set(0.2, 0.18, 0);
+        neck.rotation.z = -0.35;
+        deer.add(neck);
+        if (rIdx === 2) {
+          // Rudolph glowing nose
+          const nose = createLuminousMesh(new THREE.SphereGeometry(0.055, 8, 8), 0xff4d5e);
+          nose.position.set(0.32, 0.28, 0);
+          deer.add(nose);
+        }
+        santaGroup.add(deer);
+      }
+
+      // Soft aura around sleigh
+      const sleighAura = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: goldGlowTex,
+        color: 0xffdc7a,
+        transparent: true,
+        opacity: 0.55,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      }));
+      sleighAura.scale.set(4.5, 2.2, 1);
+      sleighAura.position.set(1.2, 0.2, 0);
+      santaGroup.add(sleighAura);
+      santaGroup.visible = false;
+
+      // ---------- 8. 4 Luxury 3D Gift Boxes (No Text Labels!) ----------
+      const giftConfigs = [
+        { boxColor: 0x8f1d2c, ribbonColor: 0xf5d37e, targetPos: new THREE.Vector3(-2.1, 0.1, 1.35), rotY: 0.35 },
+        { boxColor: 0x165b44, ribbonColor: 0xf6e6c2, targetPos: new THREE.Vector3(-0.75, 0.1, 2.05), rotY: -0.2 },
+        { boxColor: 0x1d3f7a, ribbonColor: 0xd9e6ff, targetPos: new THREE.Vector3(0.8, 0.1, 2.02), rotY: 0.22 },
+        { boxColor: 0xc29545, ribbonColor: 0x7d1a26, targetPos: new THREE.Vector3(2.1, 0.1, 1.3), rotY: -0.32 }
+      ];
+
+      const giftMeshes = [];
+      const giftHitTargets = [];
+      const giftStates = giftConfigs.map(() => ({
+        dropped: false,
+        landed: false,
+        opened: false,
+        dropProgress: 0,
+        startY: 7.2
+      }));
+
+      giftConfigs.forEach((cfg, idx) => {
+        const gGroup = new THREE.Group();
+        const boxMat = new THREE.MeshStandardMaterial({
+          color: cfg.boxColor,
+          roughness: 0.55,
+          metalness: 0.15
+        });
+        const ribMat = new THREE.MeshStandardMaterial({
+          color: cfg.ribbonColor,
+          roughness: 0.3,
+          metalness: 0.45
+        });
+
+        // Main cube
+        const base = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.72, 0.86), boxMat);
+        base.userData.giftIndex = idx;
+        gGroup.add(base);
+        giftHitTargets.push(base);
+
+        // Lid
+        const lid = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.16, 0.94), boxMat);
+        lid.position.y = 0.4;
+        lid.userData.giftIndex = idx;
+        gGroup.add(lid);
+        giftHitTargets.push(lid);
+
+        // Crossed Ribbons
+        const rib1 = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.88, 0.16), ribMat);
+        rib1.position.y = 0.04;
+        rib1.userData.giftIndex = idx;
+        gGroup.add(rib1);
+        giftHitTargets.push(rib1);
+
+        const rib2 = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.88, 0.96), ribMat);
+        rib2.position.y = 0.04;
+        rib2.userData.giftIndex = idx;
+        gGroup.add(rib2);
+        giftHitTargets.push(rib2);
+
+        // Bow loops
+        const bowL = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.04, 8, 18), ribMat);
+        bowL.position.set(-0.14, 0.54, 0);
+        bowL.rotation.y = Math.PI / 4;
+        gGroup.add(bowL);
+
+        const bowR = bowL.clone();
+        bowR.position.x = 0.14;
+        bowR.rotation.y = -Math.PI / 4;
+        gGroup.add(bowR);
+
+        gGroup.position.set(cfg.targetPos.x, 7.5, cfg.targetPos.z);
+        gGroup.rotation.y = cfg.rotY;
+        gGroup.visible = false;
+        scene.add(gGroup);
+        giftMeshes.push(gGroup);
+      });
+
+      // ---------- 9. Opening Santa Delivery Sequence ----------
+      const hintPill = document.getElementById('hintPill');
+      let deliveryActive = false;
+      let deliveryStart = 0;
+      const deliveryDuration = 4000;
+      const dropThresholds = [0.26, 0.38, 0.50, 0.62];
+
+      function startDelivery() {
+        deliveryActive = true;
+        deliveryStart = performance.now();
+        santaGroup.visible = true;
+      }
+
+      setTimeout(startDelivery, 500);
+
+      // ---------- 10. Touch / Mouse 3D Drag Rotation + Raycasting ----------
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      let isDragging = false;
+      let pointerDownPos = { x: 0, y: 0 };
+      let prevPointerPos = { x: 0, y: 0 };
+      let totalDragDist = 0;
+      let hoveredGiftIdx = -1;
+
+      container.addEventListener('pointerdown', (e) => {
+        isDragging = true;
+        totalDragDist = 0;
+        pointerDownPos = { x: e.clientX, y: e.clientY };
+        prevPointerPos = { x: e.clientX, y: e.clientY };
+        container.classList.add('dragging');
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (isDragging) {
+          const dx = e.clientX - prevPointerPos.x;
+          const dy = e.clientY - prevPointerPos.y;
+          totalDragDist += Math.hypot(dx, dy);
+          targetAzimuth -= dx * 0.0075;
+          targetPolar = Math.max(0.06, Math.min(0.62, targetPolar + dy * 0.004));
+          prevPointerPos = { x: e.clientX, y: e.clientY };
+          return;
+        }
+
+        // Hover cursor feedback
+        pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+        pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+
+        const giftHits = raycaster.intersectObjects(giftHitTargets, false);
+        const starHits = raycaster.intersectObject(starMesh, false);
+        if (giftHits.length > 0) {
+          const idx = giftHits[0].object.userData.giftIndex;
+          if (giftStates[idx].landed) {
+            hoveredGiftIdx = idx;
+            container.classList.add('hover-target');
+            return;
+          }
+        }
+        hoveredGiftIdx = -1;
+        if (starHits.length > 0) {
+          container.classList.add('hover-target');
+        } else {
+          container.classList.remove('hover-target');
+        }
+      });
+
+      window.addEventListener('pointerup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        container.classList.remove('dragging');
+
+        // Treat as tap/click if drag distance is tiny
+        if (totalDragDist < 8) {
+          pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+          pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+          raycaster.setFromCamera(pointer, camera);
+
+          const starHits = raycaster.intersectObject(starMesh, false);
+          if (starHits.length > 0) {
+            jewelMode = !jewelMode;
+            recolorTree();
+            spawnBurst(0, treeHeight + 0.35, 0, 38, 0.11);
+            playChime();
+            return;
+          }
+
+          const giftHits = raycaster.intersectObjects(giftHitTargets, false);
+          if (giftHits.length > 0) {
+            const idx = giftHits[0].object.userData.giftIndex;
+            if (giftStates[idx].landed) {
+              openGiftModal(idx);
+            }
+          }
+        }
+      });
+
+      // ---------- 11. Gift Modal Contents ----------
+      const modalBackdrop = document.getElementById('modalBackdrop');
+      const modalClose = document.getElementById('modalClose');
+      const modalTag = document.getElementById('modalTag');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalBody = document.getElementById('modalBody');
+
+      let voucherClaimed = false;
+      let polaroidIndex = 0;
+      let fortuneIndex = 0;
+
+      const polaroidMemories = [
+        {
+          title: '雪夜木屋的暖光',
+          sub: '2026 圣诞季 · 愿窗外大雪纷飞，屋里永远温暖',
+          sky: '#102042',
+          accent: '#ffd86b'
+        },
+        {
+          title: '热可可与圣诞树',
+          sub: '冬日限定 · 这一年所有的美好都值得被记住',
+          sky: '#1e1b3a',
+          accent: '#ff8fa3'
+        },
+        {
+          title: '驯鹿经过的星空',
+          sub: '平安夜 · 愿望已经顺着星光寄往明年啦',
+          sky: '#0c2738',
+          accent: '#7de0b7'
+        }
+      ];
+
+      const fortunes = [
+        { keyword: '平安喜乐', desc: '新的一年，所求皆如愿，所行化坦途，身边总有温暖的人和热气腾腾的饭。' },
+        { keyword: '好事发生', desc: '那些认真走过的路和悄悄许下的心愿，都会在这个冬天之后慢慢开花结果。' },
+        { keyword: '好运常伴', desc: '愿你眼里有星光，口袋里有自由，每天都能遇到让人嘴角上扬的小确幸。' },
+        { keyword: '万事胜意', desc: '不用急着赶路，去吹吹冬天的风，去吃想吃的甜品，一切都会比想象中更好。' }
+      ];
+
+      function buildPolaroidSvg(sceneObj) {
+        return `
+          <svg viewBox="0 0 320 190" width="100%" style="display:block;">
+            <rect width="320" height="190" fill="${sceneObj.sky}"/>
+            <circle cx="265" cy="42" r="22" fill="${sceneObj.accent}" opacity="0.9"/>
+            <circle cx="52" cy="34" r="2" fill="#fff"/>
+            <circle cx="115" cy="24" r="1.5" fill="#fff"/>
+            <circle cx="195" cy="40" r="2" fill="#fff"/>
+            <circle cx="145" cy="56" r="1.5" fill="#fff"/>
+            <path d="M0 150 Q90 125 180 148 T320 140 L320 190 L0 190 Z" fill="#eef5ff"/>
+            <rect x="115" y="102" width="84" height="50" fill="#7c4b32"/>
+            <polygon points="105,104 157,68 209,104" fill="#b7323c"/>
+            <rect x="172" y="72" width="12" height="22" fill="#5b3422"/>
+            <rect x="148" y="122" width="18" height="30" rx="2" fill="#4f2c1b"/>
+            <rect x="125" y="114" width="16" height="14" rx="2" fill="#ffd86b"/>
+            <rect x="173" y="114" width="16" height="14" rx="2" fill="#ffd86b"/>
+            <polygon points="74,98 54,148 94,148" fill="#1b6b4c"/>
+            <polygon points="246,104 228,148 264,148" fill="#1b6b4c"/>
+          </svg>
+        `;
+      }
+
+      function renderModal(giftIndex) {
+        if (giftIndex === 0) {
+          modalTag.textContent = '惊喜礼盒 · 圣诞来信';
+          modalTag.style.background = '#fbe6e4';
+          modalTag.style.color = '#9e272f';
+          modalTitle.textContent = '致亲爱的你：圣诞快乐';
+          modalBody.innerHTML = `
+            <div class="letter-paper">冬天的雪总是落得很轻，转眼又到一年圣诞。\n感谢这一年里所有的陪伴、理解和那些一起笑出声的瞬间。\n无论今年过得忙碌还是悠闲，都希望在这个闪烁着暖光的夜晚，你能收到一份实实在在的开心。\n祝你圣诞快乐，平安顺遂，明年也请继续多多关照！</div>
+            <div class="letter-sign">—— 你的圣诞老友 · 2026.12.25</div>
+          `;
+        } else if (giftIndex === 1) {
+          modalTag.textContent = '惊喜礼盒 · 限定兑换券';
+          modalTag.style.background = '#e1f5ec';
+          modalTag.style.color = '#176649';
+          modalTitle.textContent = '冬日暖心约定兑换券';
+          modalBody.innerHTML = `
+            <div class="voucher-ticket">
+              <div class="voucher-name">🍲 任意一顿冬日大餐 / 热饮券</div>
+              <div class="voucher-desc">凭此券可随时兑换一顿热腾腾的火锅、烤肉或你最喜欢的甜品，有效期：一整个冬天，随时生效！</div>
+              <div class="stamp-badge ${voucherClaimed ? 'stamped' : ''}" id="voucherStamp">已盖章生效 ✓</div>
+            </div>
+            <button class="action-btn" id="claimVoucherBtn" type="button">
+              ${voucherClaimed ? '✨ 已收入囊中，随时可用' : '🖋️ 点击盖章领取'}
+            </button>
+          `;
+          const claimBtn = document.getElementById('claimVoucherBtn');
+          const stamp = document.getElementById('voucherStamp');
+          claimBtn.addEventListener('click', () => {
+            voucherClaimed = true;
+            stamp.classList.add('stamped');
+            claimBtn.textContent = '✨ 已收入囊中，随时可用';
+            playChime();
+          });
+        } else if (giftIndex === 2) {
+          const sceneObj = polaroidMemories[polaroidIndex];
+          modalTag.textContent = '惊喜礼盒 · 冬日回忆';
+          modalTag.style.background = '#e3edff';
+          modalTag.style.color = '#244a8c';
+          modalTitle.textContent = '冬夜拍立得相册';
+          modalBody.innerHTML = `
+            <div class="polaroid">
+              <div class="polaroid-art">${buildPolaroidSvg(sceneObj)}</div>
+              <div class="polaroid-caption">${sceneObj.title}</div>
+              <div class="polaroid-sub">${sceneObj.sub}</div>
+            </div>
+            <button class="action-btn secondary" id="nextPolaroidBtn" type="button">🔄 换一张冬日记忆卡片</button>
+          `;
+          document.getElementById('nextPolaroidBtn').addEventListener('click', () => {
+            polaroidIndex = (polaroidIndex + 1) % polaroidMemories.length;
+            renderModal(2);
+            playChime();
+          });
+        } else if (giftIndex === 3) {
+          const fortune = fortunes[fortuneIndex];
+          modalTag.textContent = '惊喜礼盒 · 幸运彩蛋';
+          modalTag.style.background = '#fff0d6';
+          modalTag.style.color = '#a35b14';
+          modalTitle.textContent = '今日圣诞幸运签';
+          modalBody.innerHTML = `
+            <div class="fortune-box">
+              <div style="font-size:12px; opacity:0.8;">✨ 2027 专属祝福关键词</div>
+              <div class="fortune-keyword">${fortune.keyword}</div>
+              <div class="fortune-text">${fortune.desc}</div>
+            </div>
+            <button class="action-btn" id="nextFortuneBtn" type="button">🎲 再抽一签</button>
+          `;
+          document.getElementById('nextFortuneBtn').addEventListener('click', () => {
+            fortuneIndex = (fortuneIndex + 1) % fortunes.length;
+            renderModal(3);
+            playChime();
+          });
+        }
+      }
+
+      function openGiftModal(idx) {
+        const pos = giftMeshes[idx].position;
+        spawnBurst(pos.x, pos.y + 0.4, pos.z, 26, 0.09);
+        giftStates[idx].opened = true;
+        playChime();
+        renderModal(idx);
+        modalBackdrop.classList.add('open');
+      }
+
+      function closeModal() {
+        modalBackdrop.classList.remove('open');
+      }
+
+      modalClose.addEventListener('click', closeModal);
+      modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) closeModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalBackdrop.classList.contains('open')) closeModal();
+      });
+
+      // ---------- 12. Resize Handler ----------
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      // ---------- 13. Main Animation Loop ----------
+      const clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const dt = clock.getDelta();
+        const elapsed = clock.getElapsedTime();
+
+        // Smoothly damp 3D camera rotation
+        currentAzimuth += (targetAzimuth - currentAzimuth) * 0.08;
+        currentPolar += (targetPolar - currentPolar) * 0.08;
+        updateCameraTransform();
+
+        // Gentle tree particle rotation & star pulse
+        treeGroup.rotation.y = Math.sin(elapsed * 0.25) * 0.08 + elapsed * 0.06;
+        starMesh.rotation.y = elapsed * 0.9;
+        const starScale = 1 + Math.sin(elapsed * 2.5) * 0.08;
+        starHalo.scale.set(2.2 * starScale, 2.2 * starScale, 1);
+
+        // Snowfall update
+        const sArr = snowGeo.attributes.position.array;
+        for (let i = 0; i < snowCount; i++) {
+          sArr[i * 3 + 1] -= snowSpeeds[i];
+          sArr[i * 3] += Math.sin(elapsed * 0.8 + i) * 0.004;
+          if (sArr[i * 3 + 1] < -0.4) {
+            sArr[i * 3 + 1] = 13.5;
+            sArr[i * 3] = (Math.random() - 0.5) * 28;
+          }
+        }
+        snowGeo.attributes.position.needsUpdate = true;
+
+        // Burst / trail particles update
+        const bArr = burstGeo.attributes.position.array;
+        for (let i = 0; i < maxBursts; i++) {
+          if (burstData[i].active) {
+            bArr[i * 3] += burstData[i].vx;
+            bArr[i * 3 + 1] += burstData[i].vy;
+            bArr[i * 3 + 2] += burstData[i].vz;
+            burstData[i].vy -= 0.0018;
+            burstData[i].life -= 0.02;
+            if (burstData[i].life <= 0) {
+              burstData[i].active = false;
+              bArr[i * 3 + 1] = -999;
+            }
+          }
+        }
+        burstGeo.attributes.position.needsUpdate = true;
+
+        // Santa Sleigh Delivery
+        if (deliveryActive) {
+          const t = Math.min((performance.now() - deliveryStart) / deliveryDuration, 1);
+          const x = -14 + 28 * t;
+          const y = 7.1 + Math.sin(t * Math.PI) * 1.6;
+          const z = -2.2 + Math.cos(t * Math.PI) * 1.4;
+          santaGroup.position.set(x, y, z);
+          santaGroup.rotation.z = Math.cos(t * Math.PI) * 0.14;
+
+          if (Math.random() < 0.75) {
+            spawnBurst(x - 0.6, y, z, 2, 0.04);
+          }
+
+          dropThresholds.forEach((th, idx) => {
+            if (t >= th && !giftStates[idx].dropped) {
+              giftStates[idx].dropped = true;
+              giftMeshes[idx].visible = true;
+              giftMeshes[idx].position.set(giftConfigs[idx].targetPos.x, y - 0.3, giftConfigs[idx].targetPos.z);
+              giftStates[idx].startY = y - 0.3;
+            }
+          });
+
+          if (t >= 1) {
+            deliveryActive = false;
+            santaGroup.visible = false;
+            hintPill.textContent = '✨ 拖动可旋转 3D 视角 · 点击树下礼盒拆开惊喜';
+            setTimeout(() => hintPill.classList.add('hidden'), 4800);
+          }
+        }
+
+        // Gift Drop & Bounce Physics
+        giftStates.forEach((st, idx) => {
+          if (st.dropped && !st.landed) {
+            st.dropProgress = Math.min(st.dropProgress + dt * 0.95, 1);
+            // Ease out bounce
+            const p = st.dropProgress;
+            let ease;
+            if (p < 1 / 2.75) {
+              ease = 7.5625 * p * p;
+            } else if (p < 2 / 2.75) {
+              const p2 = p - 1.5 / 2.75;
+              ease = 7.5625 * p2 * p2 + 0.75;
+            } else if (p < 2.5 / 2.75) {
+              const p2 = p - 2.25 / 2.75;
+              ease = 7.5625 * p2 * p2 + 0.9375;
+            } else {
+              const p2 = p - 2.625 / 2.75;
+              ease = 7.5625 * p2 * p2 + 0.984375;
+            }
+            const targetY = giftConfigs[idx].targetPos.y;
+            giftMeshes[idx].position.y = st.startY + (targetY - st.startY) * ease;
+            if (p >= 1) {
+              st.landed = true;
+              giftMeshes[idx].position.y = targetY;
+              spawnBurst(giftConfigs[idx].targetPos.x, targetY + 0.4, giftConfigs[idx].targetPos.z, 20, 0.08);
+              playChime();
+            }
+          } else if (st.landed) {
+            const targetScale = hoveredGiftIdx === idx ? 1.12 : 1.0;
+            const curS = giftMeshes[idx].scale.x;
+            const nextS = curS + (targetScale - curS) * 0.14;
+            giftMeshes[idx].scale.set(nextS, nextS, nextS);
+          }
+        });
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+    })();
+  </script>
+</body>
+</html>
