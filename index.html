@@ -172,10 +172,69 @@
         background: rgba(232, 196, 118, 0.14);
         color: #ffe9b0;
       }
-      .music-btn:focus-visible, .modal-close:focus-visible, .action-btn:focus-visible {
+      .music-btn:focus-visible, .modal-close:focus-visible, .action-btn:focus-visible, .lang-btn:focus-visible {
         outline: 2px solid var(--gold);
         outline-offset: 2px;
       }
+
+      /* ---------- Language toggle ---------- */
+      .lang-btn {
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 14px);
+        left: 14px;
+        z-index: 20;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        padding: 6px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(232, 196, 118, 0.34);
+        background: rgba(9, 17, 38, 0.44);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: var(--cream);
+        cursor: pointer;
+        transition: border-color 0.25s ease, background 0.25s ease;
+      }
+      .lang-btn:hover { border-color: rgba(232, 196, 118, 0.6); }
+      .lang-opt {
+        display: inline-block;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        line-height: 1;
+        letter-spacing: 0.04em;
+        color: rgba(252, 246, 232, 0.62);
+        transition: background 0.25s ease, color 0.25s ease;
+      }
+      .lang-opt.cn { font-family: var(--serif-cn); font-weight: 600; }
+      .lang-opt.en { font-family: var(--serif-en); font-weight: 600; letter-spacing: 0.12em; }
+      .lang-opt.active {
+        background: rgba(232, 196, 118, 0.18);
+        color: #ffe9b0;
+      }
+      .lang-sep { color: rgba(232, 196, 118, 0.4); font-size: 11px; }
+
+      /* English typography adjustments */
+      body.lang-en .title-cn {
+        font-family: var(--serif-en);
+        font-style: italic;
+        font-weight: 500;
+        letter-spacing: 0.34em;
+        padding-left: 0.34em;
+        text-transform: none;
+      }
+      body.lang-en .modal-tag,
+      body.lang-en .modal-title,
+      body.lang-en .action-btn,
+      body.lang-en .fortune-keyword {
+        font-family: var(--serif-en);
+      }
+      body.lang-en .modal-title { font-size: 22px; letter-spacing: 0.01em; }
+      body.lang-en .modal-tag { letter-spacing: 0.14em; }
+      body.lang-en .letter-paper { font-family: var(--serif-en); font-size: 15px; }
+      body.lang-en .fortune-keyword { letter-spacing: 0.08em; }
 
       .hint-pill {
         position: fixed;
@@ -193,7 +252,9 @@
         color: rgba(252, 246, 232, 0.9);
         font-size: 12.5px;
         letter-spacing: 0.1em;
-        white-space: nowrap;
+        line-height: 1.55;
+        text-align: center;
+        white-space: normal;
         pointer-events: none;
         transition: opacity 0.7s ease;
       }
@@ -442,8 +503,14 @@
         <span class="rule-star">✦</span>
         <span class="rule-line r"></span>
       </div>
-      <div class="title-cn">冬夜星尘</div>
+      <div class="title-cn" id="titleSub">冬夜星尘</div>
     </header>
+
+    <button class="lang-btn" id="langBtn" type="button" aria-label="切换语言 / Switch language" title="切换语言 / Switch language">
+      <span class="lang-opt cn active" id="langOptZh">中文</span>
+      <span class="lang-sep" aria-hidden="true">·</span>
+      <span class="lang-opt en" id="langOptEn">EN</span>
+    </button>
 
     <button class="music-btn" id="musicBtn" type="button" aria-pressed="false" aria-label="圣诞音乐开关">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -469,6 +536,100 @@
     <script>
     (function () {
       'use strict';
+
+      // ---------- 0. Bilingual copy (中文 / English) ----------
+      let currentLang = 'zh';
+
+      const I18N = {
+        zh: {
+          docTitle: '冬夜星尘圣诞树 V2',
+          htmlLang: 'zh-CN',
+          titleSub: '冬夜星尘',
+          musicOff: 'MUSIC OFF',
+          musicOn: 'MUSIC ON',
+          musicAria: '圣诞音乐开关',
+          hintDelivering: '圣诞老人正在派送礼物…',
+          hintReady: '拖动可旋转视角 · 点击树下礼盒拆开惊喜',
+          closeAria: '关闭弹窗',
+          defaultTag: '神秘礼物',
+          defaultTitle: '礼物标题',
+          letterTag: '惊喜礼盒 · 圣诞来信',
+          letterTitle: '致亲爱的你：圣诞快乐',
+          letterBody: '冬天的雪总是落得很轻，转眼又到一年圣诞。\n感谢这一年里所有的陪伴、理解和那些一起笑出声的瞬间。\n无论今年过得忙碌还是悠闲，都希望在这个闪烁着暖光的夜晚，你能收到一份实实在在的开心。\n祝你圣诞快乐，平安顺遂，明年也请继续多多关照！',
+          letterSign: '—— 你的圣诞老友 · 2026.12.25',
+          voucherTag: '惊喜礼盒 · 限定兑换券',
+          voucherTitle: '冬日暖心约定兑换券',
+          voucherName: '🍲 任意一顿冬日大餐 / 热饮券',
+          voucherDesc: '凭此券可随时兑换一顿热腾腾的火锅、烤肉或你最喜欢的甜品，有效期：一整个冬天，随时生效！',
+          voucherStamp: '已盖章生效 ✓',
+          voucherClaim: '点击盖章领取',
+          voucherClaimed: '已收入囊中，随时可用',
+          polaroidTag: '惊喜礼盒 · 冬日回忆',
+          polaroidTitle: '冬夜拍立得相册',
+          polaroidNext: '换一张冬日记忆卡片',
+          polaroids: [
+            { title: '雪夜木屋的暖光', sub: '2026 圣诞季 · 愿窗外大雪纷飞，屋里永远温暖', sky: '#102042', accent: '#ffd86b' },
+            { title: '热可可与圣诞树', sub: '冬日限定 · 这一年所有的美好都值得被记住', sky: '#1e1b3a', accent: '#ff8fa3' },
+            { title: '驯鹿经过的星空', sub: '平安夜 · 愿望已经顺着星光寄往明年啦', sky: '#0c2738', accent: '#7de0b7' }
+          ],
+          fortuneTag: '惊喜礼盒 · 幸运彩蛋',
+          fortuneTitle: '今日圣诞幸运签',
+          fortuneHead: '2027 专属祝福关键词',
+          fortuneNext: '再抽一签',
+          fortunes: [
+            { keyword: '平安喜乐', desc: '新的一年，所求皆如愿，所行化坦途，身边总有温暖的人和热气腾腾的饭。' },
+            { keyword: '好事发生', desc: '那些认真走过的路和悄悄许下的心愿，都会在这个冬天之后慢慢开花结果。' },
+            { keyword: '好运常伴', desc: '愿你眼里有星光，口袋里有自由，每天都能遇到让人嘴角上扬的小确幸。' },
+            { keyword: '万事胜意', desc: '不用急着赶路，去吹吹冬天的风，去吃想吃的甜品，一切都会比想象中更好。' }
+          ]
+        },
+        en: {
+          docTitle: 'Winter Night Stardust — Christmas Tree V2',
+          htmlLang: 'en',
+          titleSub: 'Winter Night Stardust',
+          musicOff: 'MUSIC OFF',
+          musicOn: 'MUSIC ON',
+          musicAria: 'Christmas music toggle',
+          hintDelivering: 'Santa is on his way with your gifts…',
+          hintReady: 'Drag to look around · Tap a gift under the tree to open it',
+          closeAria: 'Close',
+          defaultTag: 'A Surprise Gift',
+          defaultTitle: 'Your Gift',
+          letterTag: 'Surprise Box · A Christmas Letter',
+          letterTitle: 'To You, With Love: Merry Christmas',
+          letterBody: 'Winter snow always falls so softly — and just like that, Christmas is here again.\nThank you for all the company, understanding, and moments of laughter we shared this year.\nWhether your year was busy or unhurried, I hope that on this night of warm, twinkling light you receive a joy you can truly hold onto.\nWishing you a Merry Christmas, peace and good fortune — and please keep looking out for me next year, too!',
+          letterSign: '— Your Christmas friend · Dec 25, 2026',
+          voucherTag: 'Surprise Box · Limited Voucher',
+          voucherTitle: 'A Warm Winter Promise Voucher',
+          voucherName: '🍲 One Winter Feast / Hot Drink Voucher',
+          voucherDesc: 'Redeem this voucher anytime for a steaming hotpot, a barbecue, or your favourite dessert. Valid: all winter long, whenever you wish!',
+          voucherStamp: 'Stamped & Active ✓',
+          voucherClaim: 'Tap to stamp & claim',
+          voucherClaimed: 'Saved — ready whenever you are',
+          polaroidTag: 'Surprise Box · Winter Memories',
+          polaroidTitle: 'Winter Night Polaroid Album',
+          polaroidNext: 'Show another winter memory',
+          polaroids: [
+            { title: 'Warm Light in a Snowy Cabin', sub: 'Christmas 2026 · May snow fall outside while it stays warm within', sky: '#102042', accent: '#ffd86b' },
+            { title: 'Hot Cocoa & the Christmas Tree', sub: 'Winter edition · Every good thing this year is worth remembering', sky: '#1e1b3a', accent: '#ff8fa3' },
+            { title: 'Reindeer Crossing the Starry Sky', sub: 'Christmas Eve · Your wishes are already travelling by starlight into next year', sky: '#0c2738', accent: '#7de0b7' }
+          ],
+          fortuneTag: 'Surprise Box · Lucky Surprise',
+          fortuneTitle: "Today's Christmas Fortune",
+          fortuneHead: 'Your Blessing Keyword for 2027',
+          fortuneNext: 'Draw another fortune',
+          fortunes: [
+            { keyword: 'Peace & Joy', desc: 'In the new year, may what you wish for come true, may your road be smooth, and may warm people and steaming-hot meals always be near.' },
+            { keyword: 'Good Things Ahead', desc: 'Every road you walked with care, and every wish you whispered, will slowly bloom after this winter.' },
+            { keyword: 'Luck Stays With You', desc: 'May there be starlight in your eyes and freedom in your pocket — and a small delight to make you smile every single day.' },
+            { keyword: 'Better Than You Hope', desc: 'No need to rush. Go feel the winter wind, eat the dessert you crave — everything will turn out better than you imagine.' }
+          ]
+        }
+      };
+
+      function t() { return I18N[currentLang]; }
+      let hintState = 'delivering';
+      let openGiftIndex = -1;
 
       // ---------- 1. Web Audio: music-box Jingle Bells & chimes ----------
       let audioCtx = null;
@@ -532,7 +693,7 @@
         musicEnabled = !musicEnabled;
         musicBtn.classList.toggle('active', musicEnabled);
         musicBtn.setAttribute('aria-pressed', musicEnabled ? 'true' : 'false');
-        musicLabel.textContent = musicEnabled ? 'MUSIC ON' : 'MUSIC OFF';
+        musicLabel.textContent = musicEnabled ? t().musicOn : t().musicOff;
         if (musicEnabled) {
           noteIdx = 0;
           clearTimeout(melodyTimer);
@@ -1318,18 +1479,7 @@
       let polaroidIndex = 0;
       let fortuneIndex = 0;
 
-      const polaroidMemories = [
-        { title: '雪夜木屋的暖光', sub: '2026 圣诞季 · 愿窗外大雪纷飞，屋里永远温暖', sky: '#102042', accent: '#ffd86b' },
-        { title: '热可可与圣诞树', sub: '冬日限定 · 这一年所有的美好都值得被记住', sky: '#1e1b3a', accent: '#ff8fa3' },
-        { title: '驯鹿经过的星空', sub: '平安夜 · 愿望已经顺着星光寄往明年啦', sky: '#0c2738', accent: '#7de0b7' }
-      ];
-
-      const fortunes = [
-        { keyword: '平安喜乐', desc: '新的一年，所求皆如愿，所行化坦途，身边总有温暖的人和热气腾腾的饭。' },
-        { keyword: '好事发生', desc: '那些认真走过的路和悄悄许下的心愿，都会在这个冬天之后慢慢开花结果。' },
-        { keyword: '好运常伴', desc: '愿你眼里有星光，口袋里有自由，每天都能遇到让人嘴角上扬的小确幸。' },
-        { keyword: '万事胜意', desc: '不用急着赶路，去吹吹冬天的风，去吃想吃的甜品，一切都会比想象中更好。' }
-      ];
+      // Polaroid memories & fortunes now live in I18N (per-language).
 
       function buildPolaroidSvg(s) {
         return '<svg viewBox="0 0 320 190" width="100%" style="display:block;">' +
@@ -1349,61 +1499,75 @@
       }
 
       function renderModal(giftIndex) {
+        const L = t();
         if (giftIndex === 0) {
-          modalTag.textContent = '惊喜礼盒 · 圣诞来信';
-          modalTitle.textContent = '致亲爱的你：圣诞快乐';
+          modalTag.textContent = L.letterTag;
+          modalTitle.textContent = L.letterTitle;
           modalBody.innerHTML =
-            '<div class="letter-paper">冬天的雪总是落得很轻，转眼又到一年圣诞。\n感谢这一年里所有的陪伴、理解和那些一起笑出声的瞬间。\n无论今年过得忙碌还是悠闲，都希望在这个闪烁着暖光的夜晚，你能收到一份实实在在的开心。\n祝你圣诞快乐，平安顺遂，明年也请继续多多关照！</div>' +
-            '<div class="letter-sign">—— 你的圣诞老友 · 2026.12.25</div>';
+            '<div class="letter-paper"></div>' +
+            '<div class="letter-sign"></div>';
+          modalBody.querySelector('.letter-paper').textContent = L.letterBody;
+          modalBody.querySelector('.letter-sign').textContent = L.letterSign;
         } else if (giftIndex === 1) {
-          modalTag.textContent = '惊喜礼盒 · 限定兑换券';
-          modalTitle.textContent = '冬日暖心约定兑换券';
+          modalTag.textContent = L.voucherTag;
+          modalTitle.textContent = L.voucherTitle;
           modalBody.innerHTML =
             '<div class="voucher-ticket">' +
-              '<div class="voucher-name">🍲 任意一顿冬日大餐 / 热饮券</div>' +
-              '<div class="voucher-desc">凭此券可随时兑换一顿热腾腾的火锅、烤肉或你最喜欢的甜品，有效期：一整个冬天，随时生效！</div>' +
-              '<div class="stamp-badge' + (voucherClaimed ? ' stamped' : '') + '" id="voucherStamp">已盖章生效 ✓</div>' +
+              '<div class="voucher-name"></div>' +
+              '<div class="voucher-desc"></div>' +
+              '<div class="stamp-badge' + (voucherClaimed ? ' stamped' : '') + '" id="voucherStamp"></div>' +
             '</div>' +
-            '<button class="action-btn" id="claimVoucherBtn" type="button">' +
-              (voucherClaimed ? '已收入囊中，随时可用' : '点击盖章领取') +
-            '</button>';
+            '<button class="action-btn" id="claimVoucherBtn" type="button"></button>';
+          modalBody.querySelector('.voucher-name').textContent = L.voucherName;
+          modalBody.querySelector('.voucher-desc').textContent = L.voucherDesc;
+          document.getElementById('voucherStamp').textContent = L.voucherStamp;
           const claimBtn = document.getElementById('claimVoucherBtn');
+          claimBtn.textContent = voucherClaimed ? L.voucherClaimed : L.voucherClaim;
           const stamp = document.getElementById('voucherStamp');
           claimBtn.addEventListener('click', function () {
             voucherClaimed = true;
             stamp.classList.add('stamped');
-            claimBtn.textContent = '已收入囊中，随时可用';
+            claimBtn.textContent = t().voucherClaimed;
             playChime();
           });
         } else if (giftIndex === 2) {
-          const s = polaroidMemories[polaroidIndex];
-          modalTag.textContent = '惊喜礼盒 · 冬日回忆';
-          modalTitle.textContent = '冬夜拍立得相册';
+          const s = L.polaroids[polaroidIndex % L.polaroids.length];
+          modalTag.textContent = L.polaroidTag;
+          modalTitle.textContent = L.polaroidTitle;
           modalBody.innerHTML =
             '<div class="polaroid">' +
               '<div class="polaroid-art">' + buildPolaroidSvg(s) + '</div>' +
-              '<div class="polaroid-caption">' + s.title + '</div>' +
-              '<div class="polaroid-sub">' + s.sub + '</div>' +
+              '<div class="polaroid-caption"></div>' +
+              '<div class="polaroid-sub"></div>' +
             '</div>' +
-            '<button class="action-btn" id="nextPolaroidBtn" type="button">换一张冬日记忆卡片</button>';
-          document.getElementById('nextPolaroidBtn').addEventListener('click', function () {
-            polaroidIndex = (polaroidIndex + 1) % polaroidMemories.length;
+            '<button class="action-btn" id="nextPolaroidBtn" type="button"></button>';
+          modalBody.querySelector('.polaroid-caption').textContent = s.title;
+          modalBody.querySelector('.polaroid-sub').textContent = s.sub;
+          const nextBtn = document.getElementById('nextPolaroidBtn');
+          nextBtn.textContent = L.polaroidNext;
+          nextBtn.addEventListener('click', function () {
+            polaroidIndex = (polaroidIndex + 1) % t().polaroids.length;
             renderModal(2);
             playChime();
           });
         } else if (giftIndex === 3) {
-          const f = fortunes[fortuneIndex];
-          modalTag.textContent = '惊喜礼盒 · 幸运彩蛋';
-          modalTitle.textContent = '今日圣诞幸运签';
+          const f = L.fortunes[fortuneIndex % L.fortunes.length];
+          modalTag.textContent = L.fortuneTag;
+          modalTitle.textContent = L.fortuneTitle;
           modalBody.innerHTML =
             '<div class="fortune-box">' +
-              '<div class="fortune-head">2027 专属祝福关键词</div>' +
-              '<div class="fortune-keyword">' + f.keyword + '</div>' +
-              '<div class="fortune-text">' + f.desc + '</div>' +
+              '<div class="fortune-head"></div>' +
+              '<div class="fortune-keyword"></div>' +
+              '<div class="fortune-text"></div>' +
             '</div>' +
-            '<button class="action-btn" id="nextFortuneBtn" type="button">再抽一签</button>';
-          document.getElementById('nextFortuneBtn').addEventListener('click', function () {
-            fortuneIndex = (fortuneIndex + 1) % fortunes.length;
+            '<button class="action-btn" id="nextFortuneBtn" type="button"></button>';
+          modalBody.querySelector('.fortune-head').textContent = L.fortuneHead;
+          modalBody.querySelector('.fortune-keyword').textContent = f.keyword;
+          modalBody.querySelector('.fortune-text').textContent = f.desc;
+          const drawBtn = document.getElementById('nextFortuneBtn');
+          drawBtn.textContent = L.fortuneNext;
+          drawBtn.addEventListener('click', function () {
+            fortuneIndex = (fortuneIndex + 1) % t().fortunes.length;
             renderModal(3);
             playChime();
           });
@@ -1411,6 +1575,7 @@
       }
 
       function openGiftModal(idx) {
+        openGiftIndex = idx;
         const pos = giftMeshes[idx].position;
         spawnBurst(pos.x, pos.y + 0.4, pos.z, 26, 0.09);
         giftStates[idx].opened = true;
@@ -1419,7 +1584,44 @@
         modalBackdrop.classList.add('open');
       }
 
-      function closeModal() { modalBackdrop.classList.remove('open'); }
+      function closeModal() { modalBackdrop.classList.remove('open'); openGiftIndex = -1; }
+
+      // ---------- 19b. Language toggle wiring ----------
+      const langBtn = document.getElementById('langBtn');
+      const langOptZh = document.getElementById('langOptZh');
+      const langOptEn = document.getElementById('langOptEn');
+      const titleSubEl = document.getElementById('titleSub');
+
+      function applyLanguage(lang) {
+        currentLang = lang;
+        const L = t();
+        document.documentElement.lang = L.htmlLang;
+        document.title = L.docTitle;
+        document.body.classList.toggle('lang-en', lang === 'en');
+        document.body.classList.toggle('lang-zh', lang === 'zh');
+        if (titleSubEl) titleSubEl.textContent = L.titleSub;
+        langOptZh.classList.toggle('active', lang === 'zh');
+        langOptEn.classList.toggle('active', lang === 'en');
+        langBtn.setAttribute('aria-label', lang === 'zh' ? '切换语言 / Switch language' : 'Switch language / 切换语言');
+        musicBtn.setAttribute('aria-label', L.musicAria);
+        musicLabel.textContent = musicEnabled ? L.musicOn : L.musicOff;
+        modalClose.setAttribute('aria-label', L.closeAria);
+        if (!modalBackdrop.classList.contains('open')) {
+          modalTag.textContent = L.defaultTag;
+          modalTitle.textContent = L.defaultTitle;
+        }
+        const hp = document.getElementById('hintPill');
+        if (hp && !hp.classList.contains('hidden')) {
+          hp.textContent = hintState === 'ready' ? L.hintReady : L.hintDelivering;
+        }
+        if (modalBackdrop.classList.contains('open') && openGiftIndex >= 0) {
+          renderModal(openGiftIndex);
+        }
+      }
+
+      langBtn.addEventListener('click', function () {
+        applyLanguage(currentLang === 'zh' ? 'en' : 'zh');
+      });
       modalClose.addEventListener('click', closeModal);
       modalBackdrop.addEventListener('click', function (e) { if (e.target === modalBackdrop) closeModal(); });
       document.addEventListener('keydown', function (e) {
@@ -1492,7 +1694,8 @@
           if (t >= 1) {
             deliveryActive = false;
             santaGroup.visible = false;
-            hintPill.textContent = '拖动可旋转视角 · 点击树下礼盒拆开惊喜';
+            hintState = 'ready';
+            hintPill.textContent = t().hintReady;
             setTimeout(function () { hintPill.classList.add('hidden'); }, 5200);
           }
         }

@@ -2,6 +2,13 @@
 
 本项目遵循「迭代可见」原则：每次更新都是新提交叠加在旧版本之上，旧版本永不删除，可通过提交历史与 Releases 随时找回。
 
+## v2.1.0 — 2026-11-20（双语切换 · Bilingual）
+
+- 新增左上角「中文 / EN」切换按钮（与音乐按钮同款玻璃金边样式）：一个页面、两种语言，不再拆分项目
+- 切换范围：页面标题与副标题（冬夜星尘 / Winter Night Stardust）、派送提示与操作提示、音乐按钮无障碍标签、四份礼物全部内容 —— 圣诞来信、兑换券（盖章与领取状态在切换时保留）、拍立得三张卡片、幸运签四支
+- 礼物弹窗打开时切换语言，弹窗会即时以新语言重绘；英文文案配衬线字体调整，长提示自动换行，手机端不溢出
+- Added a 中文 / EN toggle (top-left, matching glass-and-gold style): one page, two languages. It switches the title/subtitle, delivery & drag hints, and all four gift surprises — letter, voucher (claim state preserved), three polaroids, four fortunes. An open gift card re-renders instantly in the new language.
+
 ## v2.0.0 — 2026-11-20（电影感冬夜 · 视觉重建）
 
 - **色彩系统统一**：墨蓝夜、松绿、香槟金、奶油白，蔓越莓红仅用于礼盒；告别多套风格混搭
